@@ -638,6 +638,30 @@ QString Peer::toString() {
 	return host.toString().append(QString(":")).append(QString::number(port));
 }
 
+// FINGER TABLE FUNCTIONS ---------------------------------------------
+FingerTable::FingerTable() { };
+
+FingerTable::FingerTable(int nSpots, int curHash) {
+    items = new QVector<FingerTableItem>();
+    int fingerIndex = 1;
+
+    while (fingerIndex < nSpots) {
+        FingerTableItem *item = new FingerTableItem();
+        item->intervalStart = (fingerIndex + curHash)%nSpots;
+        fingerIndex *= 2;
+        item->intervalEnd = (fingerIndex + curHash)%nSpots;
+        items->push_back(*item);
+        qDebug() << "added item start = " << item->intervalStart << " and item end = " << item->intervalEnd;
+    }
+}
+
+// FINGER TALBE ITEM FUNCTIONS -----------------------------------------
+FingerTableItem::FingerTableItem() {
+    intervalStart = 0;
+    intervalEnd = 0;
+    senderOriginId = "";
+}
+
 // NETSOCKET FUNCTIONS ------------------------------------------------
 
 NetSocket::NetSocket() {
@@ -650,10 +674,14 @@ NetSocket::NetSocket() {
 	// We use the range from 32768 to 49151 for this purpose.
 	myPortMin = 32768 + (getuid() % 4096)*4;
 	myPortMax = myPortMin + 3;
-
 	seqNo = 1;
 	noForward = false;
+    nSpots = 256;
+    myDHTHash = 4;
+    fingerTable = new FingerTable(nSpots, myDHTHash);
 }
+
+
 
 bool NetSocket::bind() {
 	// Try to bind to each of the range myPortMin..myPortMax in turn.

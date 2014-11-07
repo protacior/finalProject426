@@ -280,37 +280,45 @@ static const uint qt_meta_data_NetSocket[] = {
        6,       // revision
        0,       // classname
        0,    0, // classinfo
-      10,   14, // methods
+      14,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
        0,       // flags
-       0,       // signalCount
+       3,       // signalCount
+
+ // signals: signature, parameters, type, tag, flags
+      11,   10,   10,   10, 0x05,
+      23,   10,   10,   10, 0x05,
+      33,   10,   10,   10, 0x05,
 
  // slots: signature, parameters, type, tag, flags
-      11,   10,   10,   10, 0x0a,
-      24,   10,   10,   10, 0x0a,
-      44,   10,   10,   10, 0x0a,
-      71,   62,   10,   10, 0x0a,
-      91,   10,   10,   10, 0x0a,
-     105,  101,   10,   10, 0x0a,
-     134,  128,   10,   10, 0x0a,
-     167,  162,   10,   10, 0x0a,
-     227,   10,   10,   10, 0x0a,
-     243,  162,   10,   10, 0x0a,
+      53,   10,   10,   10, 0x0a,
+      66,   10,   10,   10, 0x0a,
+      86,   10,   10,   10, 0x0a,
+     113,  104,   10,   10, 0x0a,
+     133,   10,   10,   10, 0x0a,
+     147,  143,   10,   10, 0x0a,
+     176,  170,   10,   10, 0x0a,
+     209,  204,   10,   10, 0x0a,
+     269,   10,   10,   10, 0x0a,
+     285,  204,   10,   10, 0x0a,
+     333,  327,   10,   10, 0x0a,
 
        0        // eod
 };
 
 static const char qt_meta_stringdata_NetSocket[] = {
-    "NetSocket\0\0gotTimeout()\0gotEntropyTimeout()\0"
-    "gotRouteTimeout()\0hostInfo\0"
-    "lookedUp(QHostInfo)\0resetOL()\0msg\0"
-    "gotSendPM(QVariantMap)\0share\0"
+    "NetSocket\0\0joinedDHT()\0leftDHT()\0"
+    "updateFingerTable()\0gotTimeout()\0"
+    "gotEntropyTimeout()\0gotRouteTimeout()\0"
+    "hostInfo\0lookedUp(QHostInfo)\0resetOL()\0"
+    "msg\0gotSendPM(QVariantMap)\0share\0"
     "gotShareFiles(FileSharing*)\0pair\0"
     "gotReqToDownload(QPair<QString,QPair<QByteArray,QString> >)\0"
     "gotRetransmit()\0"
     "gotStartSearchFor(QPair<QString,quint32>)\0"
+    "state\0changedDHTPreference(int)\0"
 };
 
 void NetSocket::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
@@ -319,16 +327,20 @@ void NetSocket::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, v
         Q_ASSERT(staticMetaObject.cast(_o));
         NetSocket *_t = static_cast<NetSocket *>(_o);
         switch (_id) {
-        case 0: _t->gotTimeout(); break;
-        case 1: _t->gotEntropyTimeout(); break;
-        case 2: _t->gotRouteTimeout(); break;
-        case 3: _t->lookedUp((*reinterpret_cast< QHostInfo(*)>(_a[1]))); break;
-        case 4: _t->resetOL(); break;
-        case 5: _t->gotSendPM((*reinterpret_cast< QVariantMap(*)>(_a[1]))); break;
-        case 6: _t->gotShareFiles((*reinterpret_cast< FileSharing*(*)>(_a[1]))); break;
-        case 7: _t->gotReqToDownload((*reinterpret_cast< QPair<QString,QPair<QByteArray,QString> >(*)>(_a[1]))); break;
-        case 8: _t->gotRetransmit(); break;
-        case 9: _t->gotStartSearchFor((*reinterpret_cast< QPair<QString,quint32>(*)>(_a[1]))); break;
+        case 0: _t->joinedDHT(); break;
+        case 1: _t->leftDHT(); break;
+        case 2: _t->updateFingerTable(); break;
+        case 3: _t->gotTimeout(); break;
+        case 4: _t->gotEntropyTimeout(); break;
+        case 5: _t->gotRouteTimeout(); break;
+        case 6: _t->lookedUp((*reinterpret_cast< QHostInfo(*)>(_a[1]))); break;
+        case 7: _t->resetOL(); break;
+        case 8: _t->gotSendPM((*reinterpret_cast< QVariantMap(*)>(_a[1]))); break;
+        case 9: _t->gotShareFiles((*reinterpret_cast< FileSharing*(*)>(_a[1]))); break;
+        case 10: _t->gotReqToDownload((*reinterpret_cast< QPair<QString,QPair<QByteArray,QString> >(*)>(_a[1]))); break;
+        case 11: _t->gotRetransmit(); break;
+        case 12: _t->gotStartSearchFor((*reinterpret_cast< QPair<QString,quint32>(*)>(_a[1]))); break;
+        case 13: _t->changedDHTPreference((*reinterpret_cast< int(*)>(_a[1]))); break;
         default: ;
         }
     }
@@ -366,11 +378,29 @@ int NetSocket::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 10)
+        if (_id < 14)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 10;
+        _id -= 14;
     }
     return _id;
+}
+
+// SIGNAL 0
+void NetSocket::joinedDHT()
+{
+    QMetaObject::activate(this, &staticMetaObject, 0, 0);
+}
+
+// SIGNAL 1
+void NetSocket::leftDHT()
+{
+    QMetaObject::activate(this, &staticMetaObject, 1, 0);
+}
+
+// SIGNAL 2
+void NetSocket::updateFingerTable()
+{
+    QMetaObject::activate(this, &staticMetaObject, 2, 0);
 }
 static const uint qt_meta_data_ChatDialog[] = {
 
@@ -378,7 +408,7 @@ static const uint qt_meta_data_ChatDialog[] = {
        6,       // revision
        0,       // classname
        0,    0, // classinfo
-      14,   14, // methods
+      16,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -400,8 +430,10 @@ static const uint qt_meta_data_ChatDialog[] = {
      287,   11,   11,   11, 0x0a,
      309,  304,   11,   11, 0x0a,
      352,   11,   11,   11, 0x0a,
-     373,  369,   11,   11, 0x0a,
-     403,   11,   11,   11, 0x0a,
+     369,   11,   11,   11, 0x0a,
+     384,   11,   11,   11, 0x0a,
+     401,  397,   11,   11, 0x0a,
+     431,   11,   11,   11, 0x0a,
 
        0        // eod
 };
@@ -417,7 +449,8 @@ static const char qt_meta_stringdata_ChatDialog[] = {
     "origin\0newPrivateMsg(QString)\0shareFile()\0"
     "gotDownloadReq()\0item\0"
     "gotDownloadReqFromSearch(QListWidgetItem*)\0"
-    "gotSearchInput()\0msg\0processSearchRep(QVariantMap)\0"
+    "gotSearchInput()\0gotJoinedDHT()\0"
+    "gotLeftDHT()\0msg\0processSearchRep(QVariantMap)\0"
     "increaseBudget()\0"
 };
 
@@ -439,8 +472,10 @@ void ChatDialog::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         case 9: _t->gotDownloadReq(); break;
         case 10: _t->gotDownloadReqFromSearch((*reinterpret_cast< QListWidgetItem*(*)>(_a[1]))); break;
         case 11: _t->gotSearchInput(); break;
-        case 12: _t->processSearchRep((*reinterpret_cast< QVariantMap(*)>(_a[1]))); break;
-        case 13: _t->increaseBudget(); break;
+        case 12: _t->gotJoinedDHT(); break;
+        case 13: _t->gotLeftDHT(); break;
+        case 14: _t->processSearchRep((*reinterpret_cast< QVariantMap(*)>(_a[1]))); break;
+        case 15: _t->increaseBudget(); break;
         default: ;
         }
     }
@@ -478,9 +513,9 @@ int ChatDialog::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 14)
+        if (_id < 16)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 14;
+        _id -= 16;
     }
     return _id;
 }

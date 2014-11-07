@@ -139,11 +139,15 @@ ChatDialog::ChatDialog() {
 
 	// Initialize searchReplyArchive
 	searchReplyArchive = new QMap<QString, QPair<QByteArray, QString> >();
-	// TODO: signal for when chosen
-	// TODO: display text for when joins DHT
 
 	// DHT fields
+	dhtLabel = new QLabel(this);
+	dhtLabel->setText("Status: Not in DHT");
+	connect(sock, SIGNAL(joinedDHT()), this, SLOT(gotJoinedDHT()));
+	connect(sock, SIGNAL(leftDHT()), this, SLOT(gotLeftDHT()));
 	joinDHTBox = new QCheckBox(QString("Join DHT When Available"), this);
+	connect(joinDHTBox, SIGNAL(stateChanged(int)),
+		sock, SLOT(changedDHTPreference(int)));
 
 	// Lay out the widgets to appear in the main window.
 	QVBoxLayout *layout = new QVBoxLayout();
@@ -164,7 +168,11 @@ ChatDialog::ChatDialog() {
 	search->addWidget(searchButton);
 	layout->addLayout(search);
 	layout->addWidget(searchResults);
-	layout->addWidget(joinDHTBox);
+	dht = new QHBoxLayout();
+	dht->addWidget(dhtLabel);
+	dht->addWidget(joinDHTBox);
+	dht->setAlignment(joinDHTBox, Qt::AlignRight);
+	layout->addLayout(dht);
 
 	setLayout(layout);
 
@@ -256,6 +264,16 @@ void ChatDialog::gotSearchInput() {
 
 	// Start searchTimer
 	searchTimer->start(1000);
+}
+
+void ChatDialog::gotJoinedDHT() {
+	dhtLabel->setText("Status: Joined DHT");
+	dht->removeWidget(joinDHTBox);
+	delete joinDHTBox;
+}
+
+void ChatDialog::gotLeftDHT() {
+	dhtLabel->setText("Status: Not in DHT");
 }
 
 void ChatDialog::increaseBudget() {
@@ -705,6 +723,9 @@ bool NetSocket::bind() {
 
 			// Initialize downloading information
 			downloading = false;
+
+			// Initialize DHT information
+			joinDHT = false;
 
 			return true;
 		}
@@ -1255,6 +1276,15 @@ void NetSocket::sendByBudget(QVariantMap msg) {
 			sendMsg(&msg, p);
 		}
 	}
+}
+
+void NetSocket::changedDHTPreference(int state) {
+	if (state == Qt::Checked) {
+		joinDHT = true;
+		// TODO: send message
+		return;
+	}
+	joinDHT = false;
 }
 
 // MAIN ------------------------------------------------

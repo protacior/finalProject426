@@ -10,6 +10,7 @@
 #include <QFileDialog>
 #include <QListWidget>
 #include <QCheckBox>
+#include <QHBoxLayout>
 
 #include <QUdpSocket>
 #include <QKeyEvent>
@@ -200,6 +201,13 @@ private:
 	bool downloading;
 	// Information on the file being downloaded
 	DownloadFile *dfile;
+	// Whether or not the user wants to join the DHT
+	bool joinDHT;
+
+signals:
+	void joinedDHT();
+	void leftDHT();
+	void updateFingerTable();
 
 public slots:
 	void gotTimeout();
@@ -212,6 +220,7 @@ public slots:
 	void gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pair);
 	void gotRetransmit();
 	void gotStartSearchFor(QPair<QString, quint32> pair);
+	void changedDHTPreference(int state);
 };
 
 class ChatDialog : public QDialog {
@@ -231,6 +240,8 @@ public slots:
 	void gotDownloadReq();
 	void gotDownloadReqFromSearch(QListWidgetItem *item);
 	void gotSearchInput();
+	void gotJoinedDHT();
+	void gotLeftDHT();
 
 	// Process search reply, adding information to
 	// searchReplyArchive and displaying for user
@@ -248,11 +259,12 @@ private:
 	QTextEdit *textview;
 	QLineEdit *portInput;
 	TextEdit *textline;
-	QLabel *pmLabel, *downloadLabel;
+	QLabel *pmLabel, *downloadLabel, *dhtLabel;
 	QPushButton *fileShare, *downloadFile, *searchButton;
 	QLineEdit *targetNode, *hexBlock, *searchField;
 	QListWidget *searchResults;
 	QCheckBox *joinDHTBox;
+	QHBoxLayout *dht;
 
 	// Search request currently awaiting replies
 	QString searchRequest;

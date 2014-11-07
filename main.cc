@@ -32,6 +32,7 @@ const QString BUDGET = QString("Budget");
 const QString SEARCHREP = QString("SearchReply");
 const QString MATCHNAMES = QString("MatchNames");
 const QString MATCHIDS = QString("MatchIDs");
+const QString JOINDHT = QString("JoinDHT");
 
 // Default hop limit
 const quint32 DEFLIM = 10;
@@ -144,6 +145,7 @@ ChatDialog::ChatDialog() {
 	dhtLabel = new QLabel(this);
 	dhtLabel->setText("Status: Not in DHT");
 	connect(sock, SIGNAL(joinedDHT()), this, SLOT(gotJoinedDHT()));
+	connect(sock, SIGNAL(joinedDHT()), sock, SLOT(gotJoinedDHT())); // TODO(rachel): remove this when isEmptyDHT is implemented
 	connect(sock, SIGNAL(leftDHT()), this, SLOT(gotLeftDHT()));
 	joinDHTBox = new QCheckBox(QString("Join DHT When Available"), this);
 	connect(joinDHTBox, SIGNAL(stateChanged(int)),
@@ -405,7 +407,7 @@ void ChatDialog::readMsg() {
 				msg.insert(BUDGET, newBudget);
 				sock->sendByBudget(msg);
 			}
-		} else if (sock->isMsgOrRoute(msg, senderPeer)) {
+		} else if (sock->isMsgOrRouteOrDHT(msg, senderPeer)) {
 			// Datagram is a message or route rumor
 
 			// Display message
@@ -420,7 +422,7 @@ void ChatDialog::readMsg() {
 				senderPeer->toString();
 			
 			// Process msg/route
-			processMsgOrRoute(msg, senderPeer);
+			processMsgOrRouteOrDHT(msg, senderPeer);
 		} else if (msg.find(WANT) != msg.end()) {
 			// Datagram is a status
 			sock->processStatus(msg, *senderPeer);
@@ -431,7 +433,7 @@ void ChatDialog::readMsg() {
 	}
 }
 
-void ChatDialog::processMsgOrRoute(QVariantMap msg, Peer *senderPeer) {
+void ChatDialog::processMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer) {
 	// Archive message, update status
 	sock->processMsg(&msg);
 	
@@ -456,8 +458,16 @@ void ChatDialog::processMsgOrRoute(QVariantMap msg, Peer *senderPeer) {
 	// Send back status
 	sock->sendStatus(senderPeer);
 	
-	// Monger msg or broadcast rumor
-	if (msg.find(CHATTEXT) != msg.end()) {
+	// Process join DHT request
+	if (msg.find(JOINDHT) != msg.end()) {
+		// If senderPeer wants to join DHT, process 
+		if (msg.value(JOINDHT).toBool()) {
+sock->processJoinReq(msg, senderPeer);
+		}
+	}
+
+	// Monger msg or DHT message, or broadcast route rumor
+	if (msg.find(CHATTEXT) != msg.end() || msg.find(JOINDHT) != msg.end()) {
 		sock->monger(&msg, sock->pickPeer(*senderPeer));
 	} else {
 		sock->broadcast(&msg, senderPeer);
@@ -661,7 +671,7 @@ bool NetSocket::bind() {
 				append(QString::number(p)).
 				append(QString::number(qrand()));
 
-			// Initalize status
+			// Initalize statuses
 			status = new QVariantMap();
 
 			// Initialize archive
@@ -726,6 +736,8 @@ bool NetSocket::bind() {
 
 			// Initialize DHT information
 			joinDHT = false;
+			emptyDHT = true;
+dhtStatus = new QVariantMap();
 
 			return true;
 		}
@@ -854,7 +866,7 @@ void NetSocket::archiveNew(QString msgOrigin) {
 	}
 }
 
-bool NetSocket::isMsgOrRoute(QVariantMap msg, Peer *senderPeer) {
+bool NetSocket::isMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer) {
 	if (msg.find(ORIGIN) == msg.end() ||
 	    msg.find(SEQNO) == msg.end()) {
 		return false;
@@ -863,21 +875,34 @@ bool NetSocket::isMsgOrRoute(QVariantMap msg, Peer *senderPeer) {
 	QString msgOrigin = msg.value(ORIGIN).toString();
 
 	// If msgOrigin is new, add it to archive and status
-	archiveNew(msgOrigin);
-
-	// If wanted SeqNo for msgOrigin is not the one given, declare
-	// an invalid message
-	if (msg.value(SEQNO) != status->value(msgOrigin)) {
-		// Update routingTable if msg contains direct route
-		if ((msg.value(SEQNO).toUInt() ==
-		     status->value(msgOrigin).toUInt() - 1) &&
-		    (msg.find(LASTIP) == msg.end()) &&
-		    (msg.find(LASTPORT) == msg.end())) {
-			addToRT(msgOrigin, senderPeer);
+	if (msg.find(JOINDHT) == msg.end()) {
+		// Msg or route case
+		archiveNew(msgOrigin);
+		// If wanted SeqNo for msgOrigin is not the one given, declare
+		// an invalid message
+		if (msg.value(SEQNO) != status->value(msgOrigin)) {
+			// Update routingTable if msg contains direct route
+			if ((msg.value(SEQNO).toUInt() ==
+			     status->value(msgOrigin).toUInt() - 1) &&
+			    (msg.find(LASTIP) == msg.end()) &&
+			    (msg.find(LASTPORT) == msg.end())) {
+				addToRT(msgOrigin, senderPeer);
+			}
+			return false;
 		}
+	return true;
+	}
+	// Join DHT case
+	// TODO(rachel): add to dhtStatus if new msgOrigin
+	/*
+	if (msg.value(SEQNO) < dhtStatus->value(msgOrigin)) { // TODO(rachel): seqno, join pair
+		// TODO: update routing table?
 		return false;
 	}
+	*/
+
 	return true;
+
 }
 
 bool NetSocket::isP2P(QVariantMap msg) {
@@ -1281,10 +1306,33 @@ void NetSocket::sendByBudget(QVariantMap msg) {
 void NetSocket::changedDHTPreference(int state) {
 	if (state == Qt::Checked) {
 		joinDHT = true;
-		// TODO: send message
+		// TODO(rachel): send message with JOINDHT = true, ORIGIN, SEQNO, and IP stuff?
+		// TODO(rachel): add any join requests in most recent join req archive
 		return;
 	}
 	joinDHT = false;
+}
+
+// TODO(rachel): remove this when isEmptyDHT is implemented
+void NetSocket::gotJoinedDHT() {
+	emptyDHT = false;
+}
+
+bool NetSocket::isEmptyDHT() {
+	// TODO(terin): fill in this function
+	return emptyDHT;
+}
+
+void NetSocket::processJoinReq(QVariantMap msg, Peer *senderPeer) {
+	// Check that user wants to join DHT
+	if (joinDHT) {
+		// Join DHT if haven't already done so
+		if (isEmptyDHT()) {
+			emit joinedDHT();
+		}
+		// Add msg origin to DHT
+		// TODO: call insertToDHT()
+	}
 }
 
 // MAIN ------------------------------------------------

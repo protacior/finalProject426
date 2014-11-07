@@ -280,7 +280,7 @@ static const uint qt_meta_data_NetSocket[] = {
        6,       // revision
        0,       // classname
        0,    0, // classinfo
-      14,   14, // methods
+      15,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -304,6 +304,7 @@ static const uint qt_meta_data_NetSocket[] = {
      269,   10,   10,   10, 0x0a,
      285,  204,   10,   10, 0x0a,
      333,  327,   10,   10, 0x0a,
+     359,   10,   10,   10, 0x0a,
 
        0        // eod
 };
@@ -319,6 +320,7 @@ static const char qt_meta_stringdata_NetSocket[] = {
     "gotRetransmit()\0"
     "gotStartSearchFor(QPair<QString,quint32>)\0"
     "state\0changedDHTPreference(int)\0"
+    "gotJoinedDHT()\0"
 };
 
 void NetSocket::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
@@ -341,6 +343,7 @@ void NetSocket::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, v
         case 11: _t->gotRetransmit(); break;
         case 12: _t->gotStartSearchFor((*reinterpret_cast< QPair<QString,quint32>(*)>(_a[1]))); break;
         case 13: _t->changedDHTPreference((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 14: _t->gotJoinedDHT(); break;
         default: ;
         }
     }
@@ -378,9 +381,9 @@ int NetSocket::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 14)
+        if (_id < 15)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 14;
+        _id -= 15;
     }
     return _id;
 }
@@ -425,15 +428,15 @@ static const uint qt_meta_data_ChatDialog[] = {
      154,  142,   11,   11, 0x0a,
      183,   11,   11,   11, 0x0a,
      208,  193,   11,   11, 0x0a,
-     252,  245,   11,   11, 0x0a,
-     275,   11,   11,   11, 0x0a,
-     287,   11,   11,   11, 0x0a,
-     309,  304,   11,   11, 0x0a,
-     352,   11,   11,   11, 0x0a,
-     369,   11,   11,   11, 0x0a,
-     384,   11,   11,   11, 0x0a,
-     401,  397,   11,   11, 0x0a,
-     431,   11,   11,   11, 0x0a,
+     257,  250,   11,   11, 0x0a,
+     280,   11,   11,   11, 0x0a,
+     292,   11,   11,   11, 0x0a,
+     314,  309,   11,   11, 0x0a,
+     357,   11,   11,   11, 0x0a,
+     374,   11,   11,   11, 0x0a,
+     389,   11,   11,   11, 0x0a,
+     406,  402,   11,   11, 0x0a,
+     436,   11,   11,   11, 0x0a,
 
        0        // eod
 };
@@ -445,7 +448,7 @@ static const char qt_meta_stringdata_ChatDialog[] = {
     "gotReturnPressed()\0gotPortInput()\0"
     "sender,text\0displayText(QString,QString)\0"
     "readMsg()\0msg,senderPeer\0"
-    "processMsgOrRoute(QVariantMap,Peer*)\0"
+    "processMsgOrRouteOrDHT(QVariantMap,Peer*)\0"
     "origin\0newPrivateMsg(QString)\0shareFile()\0"
     "gotDownloadReq()\0item\0"
     "gotDownloadReqFromSearch(QListWidgetItem*)\0"
@@ -466,7 +469,7 @@ void ChatDialog::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         case 3: _t->gotPortInput(); break;
         case 4: _t->displayText((*reinterpret_cast< QString(*)>(_a[1])),(*reinterpret_cast< QString(*)>(_a[2]))); break;
         case 5: _t->readMsg(); break;
-        case 6: _t->processMsgOrRoute((*reinterpret_cast< QVariantMap(*)>(_a[1])),(*reinterpret_cast< Peer*(*)>(_a[2]))); break;
+        case 6: _t->processMsgOrRouteOrDHT((*reinterpret_cast< QVariantMap(*)>(_a[1])),(*reinterpret_cast< Peer*(*)>(_a[2]))); break;
         case 7: _t->newPrivateMsg((*reinterpret_cast< QString(*)>(_a[1]))); break;
         case 8: _t->shareFile(); break;
         case 9: _t->gotDownloadReq(); break;

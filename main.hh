@@ -126,7 +126,7 @@ public:
 	// Returns true if msg has "Origin" and "SeqNo" fields
 	// and is the wanted SeqNo. Adds msg origin to archive and status
 	// if new
-	bool isMsgOrRoute(QVariantMap msg, Peer *senderPeer);
+	bool isMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer);
 	// Returns true if msg has "Dest", "Origin", and "HopLimit" fields,
 	// in addition to one set required for either PM, BlockReq, or BlockReply
 	bool isP2P(QVariantMap msg);
@@ -171,6 +171,12 @@ public:
 	// Send message to peers, dividing the budget up by the
 	// budget currently indicated in msg
 	void sendByBudget(QVariantMap msg);
+	// Whether there are other nodes in the DHT
+	bool isEmptyDHT();
+	// Process request to join DHT
+	void processJoinReq(QVariantMap msg, Peer *senderPeer);
+	// Insert origin into DHT, return false if fails
+	bool insertToDHT(QString origin);
 
 private:
 	quint16 myPortMin, myPortMax, thisPort;
@@ -178,7 +184,7 @@ private:
 	QString originID;
 	quint32 seqNo;
 	// List of originIDs with lowest sequence number not seen
-	QVariantMap *status;
+	QVariantMap *status, *dhtStatus;
 	// Archive of all messages
 	QMap<QString, QMap<quint32, QVariant> > *archive;
 	// List of all peers (excluding self)
@@ -201,10 +207,13 @@ private:
 	bool downloading;
 	// Information on the file being downloaded
 	DownloadFile *dfile;
-	// Whether or not the user wants to join the DHT
+	// Whether the user wants to join the DHT
 	bool joinDHT;
+	// Whether there are other nodes in DHT
+	bool emptyDHT;
 
 signals:
+	// TODO: emit these at the right time
 	void joinedDHT();
 	void leftDHT();
 	void updateFingerTable();
@@ -221,6 +230,7 @@ public slots:
 	void gotRetransmit();
 	void gotStartSearchFor(QPair<QString, quint32> pair);
 	void changedDHTPreference(int state);
+	void gotJoinedDHT();
 };
 
 class ChatDialog : public QDialog {
@@ -234,7 +244,7 @@ public slots:
 	void gotPortInput();
 	void displayText(QString sender, QString text);
 	void readMsg();
-	void processMsgOrRoute(QVariantMap msg, Peer *senderPeer);
+	void processMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer);
 	void newPrivateMsg(QString origin);
 	void shareFile();
 	void gotDownloadReq();

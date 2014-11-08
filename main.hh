@@ -97,6 +97,23 @@ public slots:
 	void gotFilesSelected(QStringList fileList);
 };
 
+class FingerTableItem {
+public:
+    FingerTableItem();
+    int intervalStart;
+    int intervalEnd;
+    QString senderOriginId;
+};
+
+
+class FingerTable {
+public:
+    FingerTable();
+    FingerTable(int nSpots, int curHash);
+    QVector<FingerTableItem> *items;
+    void printFingerTable();
+};
+
 class NetSocket : public QUdpSocket {
 	Q_OBJECT
 
@@ -187,6 +204,9 @@ private:
 	Peer *thisPeer;
 	QString originID;
 	quint32 seqNo, dhtSeqNo;
+	quint32 nSpots;
+	quint32 myDHTHash;
+	FingerTable *fingerTable;
 	// List of originIDs with lowest sequence number not seen
 	QVariantMap *status;
 	// List of originIDs with lowest sequence number not seen

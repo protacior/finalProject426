@@ -381,7 +381,7 @@ void ChatDialog::readMsg() {
 							qDebug() << sock->getOriginID()
 								 << "hashes not equal";
 						}
-					// NOTE: discards message where hashes don't agree
+						// NOTE: discards message where hashes don't agree
 					}
 				} else {
 					processSearchRep(msg);
@@ -434,40 +434,46 @@ void ChatDialog::readMsg() {
 }
 
 void ChatDialog::processMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer) {
-	// Archive message, update status
-	sock->processMsg(&msg);
-	
 	// Add to routingTable
 	sock->addToRT(msg.value(ORIGIN).toString(), senderPeer);
 
-	// Add last public IP address to peerList
-	QHostAddress h;
-	if (msg.find(LASTIP) != msg.end() && 
-	    msg.find(LASTPORT) != msg.end()) {
-		h = QHostAddress(msg[LASTIP].toUInt());
-		sock->learnPeer(h, msg[LASTPORT].toUInt());
-	}
-	
-	// Set last public IP address
-	msg.remove(LASTIP);
-	msg.remove(LASTPORT);
-	quint32 ip = senderPeer->host.toIPv4Address();
-	msg.insert(LASTIP, ip);
-	msg.insert(LASTPORT, senderPeer->port);
+	if (msg.find(JOINDHT) == msg.end()) {
+		// If chat msg or route rumor
 
-	// Send back status
-	sock->sendStatus(senderPeer);
+		// Archive message, update status
+		sock->processMsg(&msg);
 	
-	// Process join DHT request
-	if (msg.find(JOINDHT) != msg.end()) {
+		// Add last public IP address to peerList
+		QHostAddress h;
+		if (msg.find(LASTIP) != msg.end() && 
+		    msg.find(LASTPORT) != msg.end()) {
+			h = QHostAddress(msg[LASTIP].toUInt());
+			sock->learnPeer(h, msg[LASTPORT].toUInt());
+		}
+		
+		// Set last public IP address
+		msg.remove(LASTIP);
+		msg.remove(LASTPORT);
+		quint32 ip = senderPeer->host.toIPv4Address();
+		msg.insert(LASTIP, ip);
+		msg.insert(LASTPORT, senderPeer->port);
+
+		// Send back status
+		sock->sendStatus(senderPeer);
+	} else {
+		// Process join DHT request
+
+		// Update dhtStatus
+		sock->updateDhtStatus(&msg);
+
 		// If senderPeer wants to join DHT, process 
 		if (msg.value(JOINDHT).toBool()) {
-sock->processJoinReq(msg, senderPeer);
+			sock->processJoinReq(msg);
 		}
 	}
 
-	// Monger msg or DHT message, or broadcast route rumor
-	if (msg.find(CHATTEXT) != msg.end() || msg.find(JOINDHT) != msg.end()) {
+	// Monger msg, or broadcast route rumor or dht join request
+	if (msg.find(CHATTEXT) != msg.end()) {
 		sock->monger(&msg, sock->pickPeer(*senderPeer));
 	} else {
 		sock->broadcast(&msg, senderPeer);
@@ -652,6 +658,7 @@ NetSocket::NetSocket() {
 	myPortMax = myPortMin + 3;
 
 	seqNo = 1;
+	dhtSeqNo = 1;
 	noForward = false;
 }
 
@@ -737,7 +744,7 @@ bool NetSocket::bind() {
 			// Initialize DHT information
 			joinDHT = false;
 			emptyDHT = true;
-dhtStatus = new QVariantMap();
+			dhtStatus = new QMap<QString, QPair<quint32, bool> >();
 
 			return true;
 		}
@@ -757,7 +764,7 @@ void NetSocket::broadcast(QVariantMap *msg, Peer *senderPeer) {
 				// Send own route
 				sendRoute(itR.value());
 			} else {
-				// Forward route
+				// Forward route or DHT join message
 				sendMsg(msg, itR.value());
 			}
 		}
@@ -791,7 +798,7 @@ bool NetSocket::getNF() {
 // Archive message and update status
 void NetSocket::processMsg(QVariantMap *msg) {
 	QString msgOrigin = msg->value(ORIGIN).toString();
-        quint32 msgSeqNo = msg->value(SEQNO).toUInt();
+	quint32 msgSeqNo = msg->value(SEQNO).toUInt();
 
 	// Archive msg
 	(*archive)[msgOrigin].insert(msgSeqNo, *msg);
@@ -874,9 +881,9 @@ bool NetSocket::isMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer) {
 
 	QString msgOrigin = msg.value(ORIGIN).toString();
 
-	// If msgOrigin is new, add it to archive and status
+	// Preprocess msg or route
 	if (msg.find(JOINDHT) == msg.end()) {
-		// Msg or route case
+		// If msgOrigin is new, add it to archive and status
 		archiveNew(msgOrigin);
 		// If wanted SeqNo for msgOrigin is not the one given, declare
 		// an invalid message
@@ -892,17 +899,26 @@ bool NetSocket::isMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer) {
 		}
 	return true;
 	}
-	// Join DHT case
-	// TODO(rachel): add to dhtStatus if new msgOrigin
-	/*
-	if (msg.value(SEQNO) < dhtStatus->value(msgOrigin)) { // TODO(rachel): seqno, join pair
-		// TODO: update routing table?
+
+	// Preprocess DHT message
+
+	// If msgOrigin is new, add it to dhtStatus
+	archiveNewDHT(msgOrigin);
+
+	// If wanted SeqNo for msgOrigin is larger than the one given, declare an invalid message
+	if (msg.value(SEQNO).toUInt() < dhtStatus->value(msgOrigin).first) {
 		return false;
 	}
-	*/
 
 	return true;
+}
 
+void NetSocket::archiveNewDHT(QString msgOrigin) {
+	if (dhtStatus->find(msgOrigin) == dhtStatus->end()) {
+		// Add origin ID to status
+		QPair<quint32, bool> *item = new QPair<quint32, bool>();
+		dhtStatus->insert(msgOrigin, *item);
+	}
 }
 
 bool NetSocket::isP2P(QVariantMap msg) {
@@ -1306,11 +1322,36 @@ void NetSocket::sendByBudget(QVariantMap msg) {
 void NetSocket::changedDHTPreference(int state) {
 	if (state == Qt::Checked) {
 		joinDHT = true;
-		// TODO(rachel): send message with JOINDHT = true, ORIGIN, SEQNO, and IP stuff?
-		// TODO(rachel): add any join requests in most recent join req archive
-		return;
+		// Add any positive join requests in dhtStatus to DHT
+		QMapIterator<QString, QPair<quint32, bool> > it(*dhtStatus);
+		while (it.hasNext()) {
+			it.next();
+
+			if (it.value().second == true) {
+				// TODO(rachel): insertToDHT(it.key());
+			}
+		}
+	} else {
+		joinDHT = false;
 	}
-	joinDHT = false;
+
+	// Create and send DHT join message
+	QVariantMap *msg = new QVariantMap();
+	msg->insert(ORIGIN, originID);
+	msg->insert(SEQNO, dhtSeqNo++);
+	msg->insert(JOINDHT, joinDHT);
+
+	// Update dhtStatus
+	updateDhtStatus(msg);
+
+	// Broadcast
+	broadcast(msg, thisPeer);
+}
+
+void NetSocket::updateDhtStatus(QVariantMap *msg) {
+	// NOTE: assumed msg SEQNO is higher than current value in dhtStatus
+	(*dhtStatus)[msg->value(ORIGIN).toString()].first = msg->value(SEQNO).toUInt();
+	(*dhtStatus)[msg->value(ORIGIN).toString()].second = msg->value(JOINDHT).toBool();
 }
 
 // TODO(rachel): remove this when isEmptyDHT is implemented
@@ -1323,7 +1364,7 @@ bool NetSocket::isEmptyDHT() {
 	return emptyDHT;
 }
 
-void NetSocket::processJoinReq(QVariantMap msg, Peer *senderPeer) {
+void NetSocket::processJoinReq(QVariantMap msg) {
 	// Check that user wants to join DHT
 	if (joinDHT) {
 		// Join DHT if haven't already done so
@@ -1331,7 +1372,7 @@ void NetSocket::processJoinReq(QVariantMap msg, Peer *senderPeer) {
 			emit joinedDHT();
 		}
 		// Add msg origin to DHT
-		// TODO: call insertToDHT()
+		// TODO(rachel): insertToDHT(msg->value(ORIGIN).toString());
 	}
 }
 

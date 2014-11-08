@@ -174,7 +174,11 @@ public:
 	// Whether there are other nodes in the DHT
 	bool isEmptyDHT();
 	// Process request to join DHT
-	void processJoinReq(QVariantMap msg, Peer *senderPeer);
+	void processJoinReq(QVariantMap msg);
+	// Add msgOrigin to dhtStatus
+	void archiveNewDHT(QString msgOrigin);
+	// Update dhtStatus to reflect new (higher) seqno and join state
+	void updateDhtStatus(QVariantMap *msg);
 	// Insert origin into DHT, return false if fails
 	bool insertToDHT(QString origin);
 
@@ -182,9 +186,11 @@ private:
 	quint16 myPortMin, myPortMax, thisPort;
 	Peer *thisPeer;
 	QString originID;
-	quint32 seqNo;
+	quint32 seqNo, dhtSeqNo;
 	// List of originIDs with lowest sequence number not seen
-	QVariantMap *status, *dhtStatus;
+	QVariantMap *status;
+	// List of originIDs with lowest sequence number not seen
+	QMap<QString, QPair<quint32, bool> > *dhtStatus;
 	// Archive of all messages
 	QMap<QString, QMap<quint32, QVariant> > *archive;
 	// List of all peers (excluding self)
@@ -213,10 +219,8 @@ private:
 	bool emptyDHT;
 
 signals:
-	// TODO: emit these at the right time
 	void joinedDHT();
 	void leftDHT();
-	void updateFingerTable();
 
 public slots:
 	void gotTimeout();

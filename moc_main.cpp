@@ -280,7 +280,7 @@ static const uint qt_meta_data_NetSocket[] = {
        6,       // revision
        0,       // classname
        0,    0, // classinfo
-      14,   14, // methods
+      13,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -303,7 +303,6 @@ static const uint qt_meta_data_NetSocket[] = {
      249,   10,   10,   10, 0x0a,
      265,  184,   10,   10, 0x0a,
      313,  307,   10,   10, 0x0a,
-     339,   10,   10,   10, 0x0a,
 
        0        // eod
 };
@@ -319,7 +318,6 @@ static const char qt_meta_stringdata_NetSocket[] = {
     "gotRetransmit()\0"
     "gotStartSearchFor(QPair<QString,quint32>)\0"
     "state\0changedDHTPreference(int)\0"
-    "gotJoinedDHT()\0"
 };
 
 void NetSocket::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
@@ -341,7 +339,6 @@ void NetSocket::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, v
         case 10: _t->gotRetransmit(); break;
         case 11: _t->gotStartSearchFor((*reinterpret_cast< QPair<QString,quint32>(*)>(_a[1]))); break;
         case 12: _t->changedDHTPreference((*reinterpret_cast< int(*)>(_a[1]))); break;
-        case 13: _t->gotJoinedDHT(); break;
         default: ;
         }
     }
@@ -379,9 +376,9 @@ int NetSocket::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 14)
+        if (_id < 13)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 14;
+        _id -= 13;
     }
     return _id;
 }

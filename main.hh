@@ -193,8 +193,6 @@ public:
 	// Send message to peers, dividing the budget up by the
 	// budget currently indicated in msg
 	void sendByBudget(QVariantMap msg);
-	// Whether there are other nodes in the DHT
-	bool isEmptyDHT();
 	// Process request to join DHT
 	void processJoinReq(QVariantMap msg);
 	// Add msgOrigin to dhtStatus
@@ -241,8 +239,8 @@ private:
 	DownloadFile *dfile;
 	// Whether the user wants to join the DHT
 	bool joinDHT;
-	// Whether there are other nodes in DHT
-	bool emptyDHT;
+	// Whether the user has joined the DHT
+	bool hasJoinedDHT;
 
 signals:
 	void joinedDHT();
@@ -260,7 +258,6 @@ public slots:
 	void gotRetransmit();
 	void gotStartSearchFor(QPair<QString, quint32> pair);
 	void changedDHTPreference(int state);
-	void gotJoinedDHT();
 };
 
 class ChatDialog : public QDialog {

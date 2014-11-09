@@ -145,7 +145,6 @@ ChatDialog::ChatDialog() {
 	dhtLabel = new QLabel(this);
 	dhtLabel->setText("Status: Not in DHT");
 	connect(sock, SIGNAL(joinedDHT()), this, SLOT(gotJoinedDHT()));
-	connect(sock, SIGNAL(joinedDHT()), sock, SLOT(gotJoinedDHT())); // TODO(rachel): remove this when isEmptyDHT is implemented
 	connect(sock, SIGNAL(leftDHT()), this, SLOT(gotLeftDHT()));
 	joinDHTBox = new QCheckBox(QString("Join DHT When Available"), this);
 	connect(joinDHTBox, SIGNAL(stateChanged(int)),
@@ -270,8 +269,7 @@ void ChatDialog::gotSearchInput() {
 
 void ChatDialog::gotJoinedDHT() {
 	dhtLabel->setText("Status: Joined DHT");
-	dht->removeWidget(joinDHTBox);
-	delete joinDHTBox;
+	joinDHTBox->hide();
 }
 
 void ChatDialog::gotLeftDHT() {
@@ -412,14 +410,18 @@ void ChatDialog::readMsg() {
 
 			// Display message
 			if (msg.find(CHATTEXT) != msg.end()) {
+				/*
 				qDebug() << sock->getOriginID() << "got msg from " <<
 					senderPeer->toString();
+				*/
 
 				displayText(msg.value(ORIGIN).toString(),
 					    msg.value(CHATTEXT).toString());
 			}
+			/*
 			qDebug() << sock->getOriginID() << "got route from " << 
 				senderPeer->toString();
+			*/
 			
 			// Process msg/route
 			processMsgOrRouteOrDHT(msg, senderPeer);
@@ -649,7 +651,6 @@ FingerTable::FingerTable() { };
 
 FingerTable::FingerTable(int nSpots, QString originID) {
 	int curHash = getHash(nSpots, originID); 
-	qDebug() << " default hash = " << curHash; 
 	items = *(new QVector<FingerTableItem*>());
 	int fingerIndex = 1;
 	
@@ -661,7 +662,7 @@ FingerTable::FingerTable(int nSpots, QString originID) {
 		item->originID = originID; 
 		items.push_back(item);
 	}
-	printFingerTable(); 
+	//	printFingerTable(); 
 }
 
 void FingerTable::addNode(int nSpots, QString originID) {
@@ -692,7 +693,7 @@ void FingerTable::addNode(int nSpots, QString originID) {
 		}
 	}
 
-	qDebug() << "added" << originID << "with hash" << newHash;
+	qDebug() << " > added" << originID << "with hash" << newHash;
 	printFingerTable();
 }
 
@@ -750,19 +751,20 @@ bool NetSocket::bind() {
 	for (quint16 p = myPortMin; p <= myPortMax; p++) {
 		if (QUdpSocket::bind(p)) {
 			thisPort = p;
-			qDebug() << "bound to UDP port " << p;
 
 			QHostAddress host = QHostAddress::LocalHost;
 			thisPeer = new Peer(host, p);
 
 			// Set origin ID
 			qsrand(time(NULL));
-			originID = QString("Rachel").
-				append(QString::number(qrand())).
+			originID = QString("Rachel-").
+				//	append(QString::number(qrand())).
 				append(QString::number(p));
+			qDebug() << originID << "bound to UDP port " << p;
 
-			qDebug() << originID;
 			fingerTable = new FingerTable(nSpots, originID); 
+			qDebug() << originID << "default hash:" <<
+				fingerTable->getHash(nSpots, originID);
 
 			// Initalize statuses
 			status = new QVariantMap();
@@ -829,7 +831,7 @@ bool NetSocket::bind() {
 
 			// Initialize DHT information
 			joinDHT = false;
-			emptyDHT = true;
+			hasJoinedDHT = false;
 			dhtStatus = new QMap<QString, QPair<quint32, bool> >();
 
 			return true;
@@ -1114,7 +1116,7 @@ void NetSocket::gotRetransmit() {
 }
 
 void NetSocket::sendRoute(Peer p) {
-	qDebug() << originID << "sending route to peer " << p.toString();
+	//	qDebug() << originID << "sending route to peer " << p.toString();
 
 	QVariantMap *msg = new QVariantMap();
 	msg->insert(ORIGIN, originID);
@@ -1421,7 +1423,7 @@ void NetSocket::changedDHTPreference(int state) {
 
 			if (it.value().second == true) {
 				insertToDHT(it.key());
-				emptyDHT = false;
+				hasJoinedDHT = true;
 				emit joinedDHT();
 			}
 		}
@@ -1443,27 +1445,16 @@ void NetSocket::changedDHTPreference(int state) {
 }
 
 void NetSocket::updateDhtStatus(QVariantMap *msg) {
-	// NOTE: assumed msg SEQNO is higher than current value in dhtStatus
+	// NOTE: assumes msg SEQNO is higher than current value in dhtStatus
 	(*dhtStatus)[msg->value(ORIGIN).toString()].first = msg->value(SEQNO).toUInt() + 1;
-	qDebug() << originID << "new seqno for" << msg->value(ORIGIN).toString() << "is" << QString::number(msg->value(SEQNO).toUInt() + 1);
 	(*dhtStatus)[msg->value(ORIGIN).toString()].second = msg->value(JOINDHT).toBool();
-}
-
-// TODO(rachel): remove this when isEmptyDHT is implemented
-void NetSocket::gotJoinedDHT() {
-	emptyDHT = false;
-}
-
-bool NetSocket::isEmptyDHT() {
-	// TODO(terin): fill in this function
-	return emptyDHT;
 }
 
 void NetSocket::processJoinReq(QVariantMap msg) {
 	// Check that user wants to join DHT
 	if (joinDHT) {
 		// Join DHT if haven't already done so
-		if (isEmptyDHT()) {
+		if (!hasJoinedDHT) {
 			emit joinedDHT();
 		}
 		// Add msg origin to DHT

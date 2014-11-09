@@ -647,8 +647,10 @@ QString Peer::toString() {
 // FINGER TABLE FUNCTIONS ---------------------------------------------
 FingerTable::FingerTable() { };
 
-FingerTable::FingerTable(int nSpots, int curHash) {
-    items = new QVector<FingerTableItem>();
+FingerTable::FingerTable(int nSpots, QString originID) {
+	int curHash = getHash(nSpots, originID); 
+	qDebug() << " default hash = " << curHash; 
+    items = *(new QVector<FingerTableItem*>());
     int fingerIndex = 1;
 
     while (fingerIndex < nSpots) {
@@ -656,16 +658,73 @@ FingerTable::FingerTable(int nSpots, int curHash) {
         item->intervalStart = (fingerIndex + curHash)%nSpots;
         fingerIndex *= 2;
         item->intervalEnd = (fingerIndex + curHash)%nSpots;
-        items->push_back(*item);
-        qDebug() << "added item start = " << item->intervalStart << " and item end = " << item->intervalEnd;
+        item->originID = originID; 
+        items.push_back(item);
     }
+    printFingerTable(); 
+
+    addNode(nSpots, "Terin1"); 
+    addNode(nSpots, "Terin2"); 
+    addNode(nSpots, "Rachel!!"); 
+}
+
+// TODO: figure out why I can't replace jawn!!
+// TODO: figure out why nSpots = 256 means there are 257 actual spotttts. 
+void FingerTable::addNode(int nSpots, QString originID) {
+	int newHash = getHash(nSpots, originID); 
+	qDebug() << "adding Node originID = " << originID << " and hash = " << newHash; 
+	
+	// replace everything necessary 
+	for (int i = 0; i < items.size(); i++) {
+		FingerTableItem *curItem = items.at(i); 
+		int oldHash = getHash(nSpots, curItem->originID); 
+		int oldDistance = 0; 
+		int newDistance = 0; 
+		
+		// calculate the distance from the intervalStart
+		if (oldHash < curItem->intervalStart) {
+			oldDistance = nSpots - curItem->intervalStart + oldHash; 
+		} else {
+			oldDistance = oldHash - curItem->intervalStart; 
+		}
+		if (newHash < curItem->intervalStart) {
+			newDistance = nSpots - curItem->intervalStart + newHash; 
+		} else {
+			newDistance = newHash - curItem->intervalStart; 
+		}
+
+		// replace if necessary 
+		if (newDistance < oldDistance) {
+			curItem->originID = originID; 
+		}
+	}
+}
+
+void FingerTable::printFingerTable() {
+	for (int i = 0; i < items.size(); i++) {
+		FingerTableItem* curItem = items.at(i); 
+		qDebug() << " START = " << curItem->intervalStart << " END = " << curItem->intervalEnd << " ORIGINID = " << curItem->originID; 
+	}
+}
+
+int FingerTable::getHash(int nSpots, QString originId) {
+	QCA::init(); 
+	QCA::Hash shaHash("sha1"); 
+	shaHash.update(originId.toUtf8()); 
+	QByteArray hashArray = shaHash.final().toByteArray(); 
+	QDataStream hashStream(&hashArray, QIODevice::ReadWrite); 
+	quint32 toReturn; 
+	hashStream >> toReturn;  
+	toReturn = toReturn%nSpots; 
+	// qDebug() << "OriginId = " << originId << " and toReturn = " << toReturn; 
+	return toReturn; 
 }
 
 // FINGER TALBE ITEM FUNCTIONS -----------------------------------------
 FingerTableItem::FingerTableItem() {
     intervalStart = 0;
     intervalEnd = 0;
-    senderOriginId = "";
+    originID = "";
 }
 
 // NETSOCKET FUNCTIONS ------------------------------------------------
@@ -684,8 +743,8 @@ NetSocket::NetSocket() {
 	dhtSeqNo = 1;
 	noForward = false;
     nSpots = 256;
-    myDHTHash = 4;
-    fingerTable = new FingerTable(nSpots, myDHTHash);
+    // myDHTHash = 4;
+    // fingerTable = new FingerTable(nSpots, myDHTHash);
 }
 
 
@@ -705,6 +764,8 @@ bool NetSocket::bind() {
 			originID = QString("Rachel").
 				append(QString::number(p)).
 				append(QString::number(qrand()));
+
+			fingerTable = new FingerTable(nSpots, originID); 
 
 			// Initalize statuses
 			status = new QVariantMap();
@@ -1347,6 +1408,11 @@ void NetSocket::sendByBudget(QVariantMap msg) {
 	}
 }
 
+bool NetSocket::insertToDHT(QString origin) {
+	fingerTable->addNode(nSpots, origin); 
+	return true; 
+}
+
 void NetSocket::changedDHTPreference(int state) {
 	if (state == Qt::Checked) {
 		joinDHT = true;
@@ -1356,7 +1422,7 @@ void NetSocket::changedDHTPreference(int state) {
 			it.next();
 
 			if (it.value().second == true) {
-				// TODO(rachel): insertToDHT(it.key());
+				insertToDHT(it.key());
 			}
 		}
 	} else {

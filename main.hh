@@ -102,16 +102,21 @@ public:
     FingerTableItem();
     int intervalStart;
     int intervalEnd;
-    QString senderOriginId;
+    QString originID;
 };
 
 
 class FingerTable {
 public:
+    QVector<FingerTableItem*> items;
     FingerTable();
-    FingerTable(int nSpots, int curHash);
-    QVector<FingerTableItem> *items;
+    FingerTable(int nSpots, QString originID);
+    // Debug only to print the finger table 
     void printFingerTable();
+    // to get the hash function
+	int getHash(int nSpots, QString originId); 
+	// to add a Node 
+	void addNode(int nSpots, QString originID); 
 };
 
 class NetSocket : public QUdpSocket {
@@ -198,6 +203,7 @@ public:
 	void updateDhtStatus(QVariantMap *msg);
 	// Insert origin into DHT, return false if fails
 	bool insertToDHT(QString origin);
+
 
 private:
 	quint16 myPortMin, myPortMax, thisPort;

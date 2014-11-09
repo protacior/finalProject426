@@ -650,30 +650,23 @@ FingerTable::FingerTable() { };
 FingerTable::FingerTable(int nSpots, QString originID) {
 	int curHash = getHash(nSpots, originID); 
 	qDebug() << " default hash = " << curHash; 
-    items = *(new QVector<FingerTableItem*>());
-    int fingerIndex = 1;
-
-    while (fingerIndex < nSpots) {
-        FingerTableItem *item = new FingerTableItem();
-        item->intervalStart = (fingerIndex + curHash)%nSpots;
-        fingerIndex *= 2;
-        item->intervalEnd = (fingerIndex + curHash)%nSpots;
-        item->originID = originID; 
-        items.push_back(item);
-    }
-    printFingerTable(); 
-
-    addNode(nSpots, "Terin1"); 
-    addNode(nSpots, "Terin2"); 
-    addNode(nSpots, "Rachel!!"); 
+	items = *(new QVector<FingerTableItem*>());
+	int fingerIndex = 1;
+	
+	while (fingerIndex < nSpots) {
+		FingerTableItem *item = new FingerTableItem();
+		item->intervalStart = (fingerIndex + curHash)%nSpots;
+		fingerIndex *= 2;
+		item->intervalEnd = (fingerIndex + curHash)%nSpots;
+		item->originID = originID; 
+		items.push_back(item);
+	}
+	printFingerTable(); 
 }
 
-// TODO: figure out why I can't replace jawn!!
-// TODO: figure out why nSpots = 256 means there are 257 actual spotttts. 
 void FingerTable::addNode(int nSpots, QString originID) {
 	int newHash = getHash(nSpots, originID); 
-	qDebug() << "adding Node originID = " << originID << " and hash = " << newHash; 
-	
+
 	// replace everything necessary 
 	for (int i = 0; i < items.size(); i++) {
 		FingerTableItem *curItem = items.at(i); 
@@ -698,6 +691,9 @@ void FingerTable::addNode(int nSpots, QString originID) {
 			curItem->originID = originID; 
 		}
 	}
+
+	qDebug() << "added" << originID << "with hash" << newHash;
+	printFingerTable();
 }
 
 void FingerTable::printFingerTable() {
@@ -742,9 +738,9 @@ NetSocket::NetSocket() {
 	seqNo = 1;
 	dhtSeqNo = 1;
 	noForward = false;
-    nSpots = 256;
-    // myDHTHash = 4;
-    // fingerTable = new FingerTable(nSpots, myDHTHash);
+	nSpots = 16;
+	// myDHTHash = 4;
+	// fingerTable = new FingerTable(nSpots, myDHTHash);
 }
 
 
@@ -762,9 +758,10 @@ bool NetSocket::bind() {
 			// Set origin ID
 			qsrand(time(NULL));
 			originID = QString("Rachel").
-				append(QString::number(p)).
-				append(QString::number(qrand()));
+				append(QString::number(qrand())).
+				append(QString::number(p));
 
+			qDebug() << originID;
 			fingerTable = new FingerTable(nSpots, originID); 
 
 			// Initalize statuses
@@ -1409,6 +1406,7 @@ void NetSocket::sendByBudget(QVariantMap msg) {
 }
 
 bool NetSocket::insertToDHT(QString origin) {
+	qDebug() << "in node" << originID;
 	fingerTable->addNode(nSpots, origin); 
 	return true; 
 }
@@ -1423,6 +1421,8 @@ void NetSocket::changedDHTPreference(int state) {
 
 			if (it.value().second == true) {
 				insertToDHT(it.key());
+				emptyDHT = false;
+				emit joinedDHT();
 			}
 		}
 	} else {
@@ -1444,7 +1444,8 @@ void NetSocket::changedDHTPreference(int state) {
 
 void NetSocket::updateDhtStatus(QVariantMap *msg) {
 	// NOTE: assumed msg SEQNO is higher than current value in dhtStatus
-	(*dhtStatus)[msg->value(ORIGIN).toString()].first = msg->value(SEQNO).toUInt();
+	(*dhtStatus)[msg->value(ORIGIN).toString()].first = msg->value(SEQNO).toUInt() + 1;
+	qDebug() << originID << "new seqno for" << msg->value(ORIGIN).toString() << "is" << QString::number(msg->value(SEQNO).toUInt() + 1);
 	(*dhtStatus)[msg->value(ORIGIN).toString()].second = msg->value(JOINDHT).toBool();
 }
 
@@ -1466,7 +1467,7 @@ void NetSocket::processJoinReq(QVariantMap msg) {
 			emit joinedDHT();
 		}
 		// Add msg origin to DHT
-		// TODO(rachel): insertToDHT(msg->value(ORIGIN).toString());
+		insertToDHT(msg.value(ORIGIN).toString());
 	}
 }
 

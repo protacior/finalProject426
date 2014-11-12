@@ -199,8 +199,8 @@ public:
 	void archiveNewDHT(QString msgOrigin);
 	// Update dhtStatus to reflect new (higher) seqno and join state
 	void updateDhtStatus(QVariantMap *msg);
-	// Insert origin into DHT, return false if fails
-	bool insertToDHT(QString origin);
+	// Add to finger table
+	void addToFingerTable(QString origin);
 
 
 private:

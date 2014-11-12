@@ -1407,10 +1407,9 @@ void NetSocket::sendByBudget(QVariantMap msg) {
 	}
 }
 
-bool NetSocket::insertToDHT(QString origin) {
+void NetSocket::addToFingerTable(QString origin) {
 	qDebug() << "in node" << originID;
 	fingerTable->addNode(nSpots, origin); 
-	return true; 
 }
 
 void NetSocket::changedDHTPreference(int state) {
@@ -1422,7 +1421,7 @@ void NetSocket::changedDHTPreference(int state) {
 			it.next();
 
 			if (it.value().second == true) {
-				insertToDHT(it.key());
+				addToFingerTable(it.key());
 				hasJoinedDHT = true;
 				emit joinedDHT();
 			}
@@ -1458,7 +1457,7 @@ void NetSocket::processJoinReq(QVariantMap msg) {
 			emit joinedDHT();
 		}
 		// Add msg origin to DHT
-		insertToDHT(msg.value(ORIGIN).toString());
+		addToFingerTable(msg.value(ORIGIN).toString());
 	}
 }
 

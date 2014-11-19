@@ -108,15 +108,31 @@ public:
 
 class FingerTable {
 public:
+<<<<<<< HEAD
 	QVector<FingerTableItem*> items;
 	FingerTable();
 	FingerTable(int nSpots, QString originID);
 	// Debug only to print the finger table 
 	void printFingerTable();
 	// to get the hash function
+=======
+    QString oneBehind;
+    int curHash;
+    QVector<FingerTableItem*> items;
+    FingerTable();
+    FingerTable(int nSpots, QString originID);
+    // Debug only to print the finger table 
+    void printFingerTable();
+    // to get the hash function
+>>>>>>> 79a422e50cd0b571066cbf9e958127b262ef8543
 	int getHash(int nSpots, QString originId); 
 	// to add a Node 
 	void addNode(int nSpots, QString originID); 
+    // based on a hash get the corresponding string
+    QString getPeerFromHash(int hash);
+    void updateBehindHash(int nSpots, QString newID);
+    // get the distance from the current to the destination, wrapping ish!
+    int getDistance(int nSpots, int dest, int cur);
 };
 
 class NetSocket : public QUdpSocket {
@@ -201,6 +217,17 @@ public:
 	void updateDhtStatus(QVariantMap *msg);
 	// Add to finger table
 	void addToFingerTable(QString origin);
+
+
+    // new stuff
+    // is TransferRequest
+    bool isTransferRequest(QVariantMap msg);
+    // foundTransferRequest
+    void doTransferRequest(QVariantMap msg);
+
+    // send it to corresponding node in fingerTable
+    void sendThroughFingerTable(QVariantMap *msg);
+    bool isMyDHTRequest(int desiredLoc);
 
 
 private:

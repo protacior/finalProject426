@@ -144,11 +144,15 @@ ChatDialog::ChatDialog() {
 	// DHT fields
 	dhtLabel = new QLabel(this);
 	dhtLabel->setText("Status: Not in DHT");
-	connect(sock, SIGNAL(joinedDHT()), this, SLOT(gotJoinedDHT()));
-	connect(sock, SIGNAL(leftDHT()), this, SLOT(gotLeftDHT()));
+	leaveDHT = new QPushButton(QString("Leave DHT"));
+	connect(leaveDHT, SIGNAL(clicked()), this, SLOT(gotLeaveDHT()));
+	connect(this, SIGNAL(leftDHT()), this, SLOT(gotLeftDHT()));
 	joinDHTBox = new QCheckBox(QString("Join DHT When Available"), this);
 	connect(joinDHTBox, SIGNAL(stateChanged(int)),
-		sock, SLOT(changedDHTPreference(int)));
+		this, SLOT(changedDHTPreference(int)));
+	connect(sock, SIGNAL(joinedDHT()), this, SLOT(gotJoinedDHT()));
+	connect(this, SIGNAL(changeDHTPref(bool)),
+		sock, SLOT(gotChangedDHTPref(bool)));
 
 	// Lay out the widgets to appear in the main window.
 	QVBoxLayout *layout = new QVBoxLayout();
@@ -171,9 +175,12 @@ ChatDialog::ChatDialog() {
 	layout->addWidget(searchResults);
 	dht = new QHBoxLayout();
 	dht->addWidget(dhtLabel);
+	dht->addWidget(leaveDHT);
 	dht->addWidget(joinDHTBox);
 	dht->setAlignment(joinDHTBox, Qt::AlignRight);
 	layout->addLayout(dht);
+
+	leaveDHT->hide();
 
 	setLayout(layout);
 
@@ -269,11 +276,30 @@ void ChatDialog::gotSearchInput() {
 
 void ChatDialog::gotJoinedDHT() {
 	dhtLabel->setText("Status: Joined DHT");
+	joinDHTBox->setCheckState(Qt::Unchecked);
 	joinDHTBox->hide();
+	leaveDHT->show();
+}
+
+
+void ChatDialog::changedDHTPreference(int state) {
+	if (state == Qt::Checked) {
+		emit(changeDHTPref(true));
+	} else {
+		emit(changeDHTPref(false));
+	}
+}
+
+void ChatDialog::gotLeaveDHT() {
+	emit(changeDHTPref(false));
+	leaveDHT->hide();
+	// TODO: delay this
+	emit(leftDHT());
 }
 
 void ChatDialog::gotLeftDHT() {
 	dhtLabel->setText("Status: Not in DHT");
+	joinDHTBox->show();
 }
 
 void ChatDialog::increaseBudget() {
@@ -472,6 +498,8 @@ void ChatDialog::processMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer) {
 		if (msg.value(JOINDHT).toBool()) {
 			sock->processJoinReq(msg);
 		}
+		// TODO: if wants to leave and is in finger table,
+		//       update finger table
 	}
 
 	// Monger msg, or broadcast route rumor or dht join request
@@ -1412,8 +1440,8 @@ void NetSocket::addToFingerTable(QString origin) {
 	fingerTable->addNode(nSpots, origin); 
 }
 
-void NetSocket::changedDHTPreference(int state) {
-	if (state == Qt::Checked) {
+void NetSocket::gotChangedDHTPref(bool join) {
+	if (join) {
 		joinDHT = true;
 		// Add any positive join requests in dhtStatus to DHT
 		QMapIterator<QString, QPair<quint32, bool> > it(*dhtStatus);
@@ -1422,12 +1450,15 @@ void NetSocket::changedDHTPreference(int state) {
 
 			if (it.value().second == true) {
 				addToFingerTable(it.key());
-				hasJoinedDHT = true;
-				emit joinedDHT();
+				if (!hasJoinedDHT) {
+					hasJoinedDHT = true;
+					emit joinedDHT();
+				}
 			}
 		}
 	} else {
 		joinDHT = false;
+		hasJoinedDHT = false; // TODO: correct?
 	}
 
 	// Create and send DHT join message
@@ -1454,6 +1485,7 @@ void NetSocket::processJoinReq(QVariantMap msg) {
 	if (joinDHT) {
 		// Join DHT if haven't already done so
 		if (!hasJoinedDHT) {
+			hasJoinedDHT = true;
 			emit joinedDHT();
 		}
 		// Add msg origin to DHT

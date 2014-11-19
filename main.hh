@@ -99,21 +99,21 @@ public slots:
 
 class FingerTableItem {
 public:
-    FingerTableItem();
-    int intervalStart;
-    int intervalEnd;
-    QString originID;
+	FingerTableItem();
+	int intervalStart;
+	int intervalEnd;
+	QString originID;
 };
 
 
 class FingerTable {
 public:
-    QVector<FingerTableItem*> items;
-    FingerTable();
-    FingerTable(int nSpots, QString originID);
-    // Debug only to print the finger table 
-    void printFingerTable();
-    // to get the hash function
+	QVector<FingerTableItem*> items;
+	FingerTable();
+	FingerTable(int nSpots, QString originID);
+	// Debug only to print the finger table 
+	void printFingerTable();
+	// to get the hash function
 	int getHash(int nSpots, QString originId); 
 	// to add a Node 
 	void addNode(int nSpots, QString originID); 
@@ -244,7 +244,6 @@ private:
 
 signals:
 	void joinedDHT();
-	void leftDHT();
 
 public slots:
 	void gotTimeout();
@@ -257,7 +256,7 @@ public slots:
 	void gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pair);
 	void gotRetransmit();
 	void gotStartSearchFor(QPair<QString, quint32> pair);
-	void changedDHTPreference(int state);
+	void gotChangedDHTPref(bool join);
 };
 
 class ChatDialog : public QDialog {
@@ -278,7 +277,9 @@ public slots:
 	void gotDownloadReqFromSearch(QListWidgetItem *item);
 	void gotSearchInput();
 	void gotJoinedDHT();
+	void gotLeaveDHT();
 	void gotLeftDHT();
+	void changedDHTPreference(int state);
 
 	// Process search reply, adding information to
 	// searchReplyArchive and displaying for user
@@ -290,6 +291,8 @@ public slots:
 signals:
 	void reqToDownload(QPair<QString, QPair<QByteArray, QString> >);
 	void startSearchFor(QPair<QString, quint32>);
+	void leftDHT();
+	void changeDHTPref(bool);
 
 private:
 	NetSocket *sock;
@@ -297,7 +300,7 @@ private:
 	QLineEdit *portInput;
 	TextEdit *textline;
 	QLabel *pmLabel, *downloadLabel, *dhtLabel;
-	QPushButton *fileShare, *downloadFile, *searchButton;
+	QPushButton *fileShare, *downloadFile, *searchButton, *leaveDHT;
 	QLineEdit *targetNode, *hexBlock, *searchField;
 	QListWidget *searchResults;
 	QCheckBox *joinDHTBox;

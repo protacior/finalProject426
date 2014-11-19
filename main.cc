@@ -33,6 +33,10 @@ const QString SEARCHREP = QString("SearchReply");
 const QString MATCHNAMES = QString("MatchNames");
 const QString MATCHIDS = QString("MatchIDs");
 const QString JOINDHT = QString("JoinDHT");
+const QString FILENAME = QString("FileName");
+const QString FILEHASH = QString("FileHash");
+const QString BLOCKLISTHASH = QString("BlockListHash");
+
 
 // Default hop limit
 const quint32 DEFLIM = 10;
@@ -314,7 +318,11 @@ void ChatDialog::readMsg() {
 		s >> msg;
 
 		// Triage based on datagram type
-		if (sock->isP2P(msg)) {
+        if (sock->isTransferRequest(msg)) {
+            qDebug() << "got transfer request message for file = " << msg[FILENAME].toString();
+            sock->doTransferRequest(msg);
+        }
+        else if (sock->isP2P(msg)) {
 			QString msgDest = msg.value(DEST).toString();
 			quint32 hopLim = msg.value(HOPLIMIT).toUInt();
 
@@ -405,7 +413,7 @@ void ChatDialog::readMsg() {
 				msg.insert(BUDGET, newBudget);
 				sock->sendByBudget(msg);
 			}
-		} else if (sock->isMsgOrRouteOrDHT(msg, senderPeer)) {
+        } else if (sock->isMsgOrRouteOrDHT(msg, senderPeer)) {
 			// Datagram is a message or route rumor
 
 			// Display message
@@ -647,13 +655,16 @@ QString Peer::toString() {
 }
 
 // FINGER TABLE FUNCTIONS ---------------------------------------------
-FingerTable::FingerTable() { };
+FingerTable::FingerTable() {
+    oneBehind = "";
+    curHash = 0;
+};
 
 FingerTable::FingerTable(int nSpots, QString originID) {
-	int curHash = getHash(nSpots, originID); 
+    curHash = getHash(nSpots, originID);
 	items = *(new QVector<FingerTableItem*>());
 	int fingerIndex = 1;
-	
+    oneBehind = originID;
 	while (fingerIndex < nSpots) {
 		FingerTableItem *item = new FingerTableItem();
 		item->intervalStart = (fingerIndex + curHash)%nSpots;
@@ -692,9 +703,62 @@ void FingerTable::addNode(int nSpots, QString originID) {
 			curItem->originID = originID; 
 		}
 	}
-
+    updateBehindHash(nSpots, originID);
 	qDebug() << " > added" << originID << "with hash" << newHash;
 	printFingerTable();
+}
+
+void FingerTable::updateBehindHash(int nSpots, QString newID) {
+    int behindHash = getHash(nSpots, oneBehind);
+    int nodeHash = getHash(nSpots, newID);
+    int oldDistance = getDistance(nSpots, curHash, behindHash);
+    int newDistance = getDistance(nSpots, curHash, nodeHash);
+    // if the new node is closer, make it one behind
+
+//    if (behindHash < curHash) {
+//        oldDistance = curHash - behindHash;
+//    } else {
+//        oldDistance = nSpots - behindHash + curHash;
+//    }
+
+//    if (nodeHash < curHash) {
+//        newDistance = curHash - nodeHash;
+//    } else {
+//        newDistance = nSpots - nodeHash + curHash;
+//    }
+
+    if (newDistance < oldDistance) {
+        oneBehind = newID;
+    }
+}
+
+int FingerTable::getDistance(int nSpots, int dest, int cur) {
+    if (cur < dest) {
+        return dest - cur;
+    } else {
+        return nSpots - cur + dest;
+    }
+}
+
+QString FingerTable::getPeerFromHash(int hash) {
+
+    for (int i = 0; i < items.size(); i++) {
+        FingerTableItem *curItem = items.at(i);
+        int low = curItem->intervalStart;
+        int high = curItem->intervalEnd;
+
+        if (high < low) {
+            if (hash < high || hash >= low) {
+                return curItem->originID;
+            }
+        } else {
+            if (hash >= low && hash < high) {
+               return curItem->originID;
+            }
+        }
+    }
+
+    return "";
 }
 
 void FingerTable::printFingerTable() {
@@ -702,6 +766,8 @@ void FingerTable::printFingerTable() {
 		FingerTableItem* curItem = items.at(i); 
 		qDebug() << " START = " << curItem->intervalStart << " END = " << curItem->intervalEnd << " ORIGINID = " << curItem->originID; 
 	}
+    qDebug() << "CUR HASH = " << curHash;
+    qDebug() << "ONE BEHIND = " << oneBehind;
 }
 
 int FingerTable::getHash(int nSpots, QString originId) {
@@ -739,7 +805,7 @@ NetSocket::NetSocket() {
 	seqNo = 1;
 	dhtSeqNo = 1;
 	noForward = false;
-	nSpots = 16;
+    nSpots = 32;
 	// myDHTHash = 4;
 	// fingerTable = new FingerTable(nSpots, myDHTHash);
 }
@@ -1205,15 +1271,86 @@ void NetSocket::forwardP2P(QVariantMap msg) {
 
 void NetSocket::gotShareFiles(FileSharing *share) {
 	QVectorIterator<Files> it(share->files);
+
+
 	while (it.hasNext()) {
 		// Store each file to be shared in internal database
 		Files file = it.next();
-		if (fileArchive->find(file.filename) == fileArchive->end()) {
-			fileArchive->insert(file.filename, file);
-		} else {
-			qDebug() << "file" << file.filename << "already in fileArchive";
-		}
+
+        QVariantMap *msg = new QVariantMap();
+        int fileHash = fingerTable->getHash(nSpots, file.filename);
+        msg->insert(ORIGIN, originID);
+        msg->insert(FILENAME, file.filename);
+        msg->insert(FILEHASH, fileHash);
+        msg->insert(BLOCKLISTHASH, file.blocklistHash);
+
+        qDebug() << "originId = " << originID;
+        qDebug() << "fileName = " << file.filename;
+        qDebug() << "fileHash = " << fileHash;
+        qDebug() << "blockListHash = " << file.blocklistHash.toHex();
+
+        if (isMyDHTRequest(fileHash)) {
+            qDebug() << "TODO: UPLOAD TO MY OWN DIRECTORY!!";
+        } else {
+            sendThroughFingerTable(msg);
+        }
 	}
+}
+
+void NetSocket::sendThroughFingerTable(QVariantMap *msg) {
+
+    fingerTable->printFingerTable();
+    QString dest = fingerTable->getPeerFromHash(((*msg)[FILEHASH]).toInt());
+
+    qDebug() << " sending file to " << dest;
+    // Find originID in routing table
+    Peer *peer = routingTable->value(dest);
+    // Send to that peer
+    sendMsg(msg, *peer);
+}
+
+bool NetSocket::isTransferRequest(QVariantMap msg) {
+    if (msg.contains(ORIGIN) && msg.contains(FILENAME) && msg.contains(FILEHASH) && msg.contains(BLOCKLISTHASH)) {
+        return true;
+    }
+    return false;
+}
+
+void NetSocket::doTransferRequest(QVariantMap msg) {
+    qDebug() << "in doTransferRequest with msg = " << msg; 
+    int desiredLoc = (msg[FILEHASH]).toInt();
+    qDebug() << "desiredLoc = " << desiredLoc; 
+    if (isMyDHTRequest(desiredLoc)) {
+        qDebug() << "IT'S 4 ME!";
+    } else {
+        qDebug() << " sending through the finger table again!";
+        sendThroughFingerTable(&msg);
+    }
+}
+
+bool NetSocket::isMyDHTRequest(int desiredLoc) {
+    // need to check if desiredLocation is BETWEEN one behind and cur
+    // 2 cases
+    int curHash = fingerTable->curHash;
+    int oneBehind = fingerTable->getHash(nSpots, fingerTable->oneBehind);
+    qDebug() << "> Looking at hash = " << desiredLoc; 
+    qDebug() << "> I am in charge of " << oneBehind << " < x <= " << curHash; 
+    if (curHash == oneBehind) {
+        return true;
+    } else if (curHash > oneBehind) {
+        if (desiredLoc <= curHash && desiredLoc > oneBehind) {
+            return true;
+        }
+    } else {
+        if (desiredLoc <= curHash || desiredLoc > oneBehind) {
+            return true;
+        }
+    }
+    return false;
+        // cur > one behind
+            // is <= cur && > oneBehind
+        // cur < oneBehind
+            // <= cur || > oneBehidn
 }
 
 bool NetSocket::isDownloading() {

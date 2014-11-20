@@ -1343,7 +1343,7 @@ void NetSocket::gotShareFiles(FileSharing *share) {
 		// qDebug() << "> added " << file.fileName << " to 'uploadedFiles' ";  
 
         if (isMyDHTRequest(fileHash)) {
-            copyFile(*msg);
+            qDebug() << "TODO: UPLOAD TO MY OWN DIRECTORY!!";
         } else {
             sendThroughFingerTable(msg);
         }
@@ -1381,16 +1381,6 @@ void NetSocket::doTransferRequest(QVariantMap msg) {
         qDebug() << " sending through the finger table again!";
         sendThroughFingerTable(&msg);
     }
-}
-
-void NetSocket::copyFile(QVariantMap msg) {
-    QString fileName = msg[FILENAME].toString();
-
-    FileSharing *fileSharing = new FileSharing();
-    Files *file = fileSharing->getFile(fileName);
-    file->filename = removePrefix(file->filename);
-    dhtArchive->insert(file->filename, *file);
-    qDebug() << "added" << file->filename << "to dhtArchive";
 }
 
 // PHASE 2: TERIN 
@@ -1569,13 +1559,18 @@ void NetSocket::processBlockReply(QByteArray data) {
 	if (dfile->blocksDownloaded == dfile->file->filesize) {
 		// Indicate end of download and close file
 		downloading = false;
+        // TODO: TERIN: Add to dhtFiles
 
+//        qDebug() << " added" << dfile->file->filename << " to dhtArchive";
 		dfile->writeFile->close();
+        qDebug() << " closed the filllle!!";
         FileSharing *fileSharing = new FileSharing();
+        qDebug() << " opened a filesharing";
         Files *file = fileSharing->getFile(dfile->file->filename);
-        file->filename = removePrefix(file->filename);
-        dhtArchive->insert(file->filename, *file);
-        qDebug() << "added" << removePrefix(dfile->file->filename) << "to dhtArchive";
+        qDebug() << "opneed the file with the name" << file->filename;
+        qDebug() << "with no prefix = " << removePrefix(dfile->file->filename);
+        dhtArchive->insert(removePrefix(dfile->file->filename), *file);
+        qDebug() << "inserted the fiel into the archive";
 	} else {
 		// Form and send next block request
 		dfile->msg->remove(BLOCKREQ);
@@ -1606,8 +1601,7 @@ void NetSocket::processSearchReq(QVariantMap msg, Peer p) {
 	QVariantList *ids = new QVariantList();
 
 	QStringList strings = msg.value(SEARCH).toString().split(QRegExp("\\s+"));
-    QMapIterator<QString, Files> it(*dhtArchive);
-    //QMapIterator<QString, Files> it(*fileArchive);
+	QMapIterator<QString, Files> it(*fileArchive);
 	while (it.hasNext()) {
 		QString filename = it.next().key();
 

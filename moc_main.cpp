@@ -299,10 +299,10 @@ static const uint qt_meta_data_NetSocket[] = {
      113,   10,   10,   10, 0x0a,
      127,  123,   10,   10, 0x0a,
      156,  150,   10,   10, 0x0a,
-     189,  184,   10,   10, 0x0a,
-     249,   10,   10,   10, 0x0a,
-     265,  184,   10,   10, 0x0a,
-     313,  307,   10,   10, 0x0a,
+     200,  184,   10,   10, 0x0a,
+     265,   10,   10,   10, 0x0a,
+     286,  281,   10,   10, 0x0a,
+     334,  328,   10,   10, 0x0a,
 
        0        // eod
 };
@@ -313,9 +313,9 @@ static const char qt_meta_stringdata_NetSocket[] = {
     "gotRouteTimeout()\0hostInfo\0"
     "lookedUp(QHostInfo)\0resetOL()\0msg\0"
     "gotSendPM(QVariantMap)\0share\0"
-    "gotShareFiles(FileSharing*)\0pair\0"
-    "gotReqToDownload(QPair<QString,QPair<QByteArray,QString> >)\0"
-    "gotRetransmit()\0"
+    "gotShareFiles(FileSharing*)\0pair,isDownload\0"
+    "gotReqToDownload(QPair<QString,QPair<QByteArray,QString> >,bool)\0"
+    "gotRetransmit()\0pair\0"
     "gotStartSearchFor(QPair<QString,quint32>)\0"
     "state\0changedDHTPreference(int)\0"
 };
@@ -335,7 +335,7 @@ void NetSocket::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, v
         case 6: _t->resetOL(); break;
         case 7: _t->gotSendPM((*reinterpret_cast< QVariantMap(*)>(_a[1]))); break;
         case 8: _t->gotShareFiles((*reinterpret_cast< FileSharing*(*)>(_a[1]))); break;
-        case 9: _t->gotReqToDownload((*reinterpret_cast< QPair<QString,QPair<QByteArray,QString> >(*)>(_a[1]))); break;
+        case 9: _t->gotReqToDownload((*reinterpret_cast< QPair<QString,QPair<QByteArray,QString> >(*)>(_a[1])),(*reinterpret_cast< bool(*)>(_a[2]))); break;
         case 10: _t->gotRetransmit(); break;
         case 11: _t->gotStartSearchFor((*reinterpret_cast< QPair<QString,quint32>(*)>(_a[1]))); break;
         case 12: _t->changedDHTPreference((*reinterpret_cast< int(*)>(_a[1]))); break;
@@ -408,31 +408,31 @@ static const uint qt_meta_data_ChatDialog[] = {
        2,       // signalCount
 
  // signals: signature, parameters, type, tag, flags
-      12,   11,   11,   11, 0x05,
-      69,   11,   11,   11, 0x05,
+      14,   12,   11,   11, 0x05,
+      76,   11,   11,   11, 0x05,
 
  // slots: signature, parameters, type, tag, flags
-     108,   11,   11,   11, 0x0a,
-     127,   11,   11,   11, 0x0a,
-     154,  142,   11,   11, 0x0a,
-     183,   11,   11,   11, 0x0a,
-     208,  193,   11,   11, 0x0a,
-     257,  250,   11,   11, 0x0a,
-     280,   11,   11,   11, 0x0a,
-     292,   11,   11,   11, 0x0a,
-     314,  309,   11,   11, 0x0a,
-     357,   11,   11,   11, 0x0a,
-     374,   11,   11,   11, 0x0a,
-     389,   11,   11,   11, 0x0a,
-     406,  402,   11,   11, 0x0a,
-     436,   11,   11,   11, 0x0a,
+     115,   11,   11,   11, 0x0a,
+     134,   11,   11,   11, 0x0a,
+     161,  149,   11,   11, 0x0a,
+     190,   11,   11,   11, 0x0a,
+     215,  200,   11,   11, 0x0a,
+     264,  257,   11,   11, 0x0a,
+     287,   11,   11,   11, 0x0a,
+     299,   11,   11,   11, 0x0a,
+     321,  316,   11,   11, 0x0a,
+     364,   11,   11,   11, 0x0a,
+     381,   11,   11,   11, 0x0a,
+     396,   11,   11,   11, 0x0a,
+     413,  409,   11,   11, 0x0a,
+     443,   11,   11,   11, 0x0a,
 
        0        // eod
 };
 
 static const char qt_meta_stringdata_ChatDialog[] = {
-    "ChatDialog\0\0"
-    "reqToDownload(QPair<QString,QPair<QByteArray,QString> >)\0"
+    "ChatDialog\0\0,\0"
+    "reqToDownload(QPair<QString,QPair<QByteArray,QString> >,bool)\0"
     "startSearchFor(QPair<QString,quint32>)\0"
     "gotReturnPressed()\0gotPortInput()\0"
     "sender,text\0displayText(QString,QString)\0"
@@ -452,7 +452,7 @@ void ChatDialog::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         Q_ASSERT(staticMetaObject.cast(_o));
         ChatDialog *_t = static_cast<ChatDialog *>(_o);
         switch (_id) {
-        case 0: _t->reqToDownload((*reinterpret_cast< QPair<QString,QPair<QByteArray,QString> >(*)>(_a[1]))); break;
+        case 0: _t->reqToDownload((*reinterpret_cast< QPair<QString,QPair<QByteArray,QString> >(*)>(_a[1])),(*reinterpret_cast< bool(*)>(_a[2]))); break;
         case 1: _t->startSearchFor((*reinterpret_cast< QPair<QString,quint32>(*)>(_a[1]))); break;
         case 2: _t->gotReturnPressed(); break;
         case 3: _t->gotPortInput(); break;
@@ -513,9 +513,9 @@ int ChatDialog::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 }
 
 // SIGNAL 0
-void ChatDialog::reqToDownload(QPair<QString,QPair<QByteArray,QString> > _t1)
+void ChatDialog::reqToDownload(QPair<QString,QPair<QByteArray,QString> > _t1, bool _t2)
 {
-    void *_a[] = { 0, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
+    void *_a[] = { 0, const_cast<void*>(reinterpret_cast<const void*>(&_t1)), const_cast<void*>(reinterpret_cast<const void*>(&_t2)) };
     QMetaObject::activate(this, &staticMetaObject, 0, _a);
 }
 

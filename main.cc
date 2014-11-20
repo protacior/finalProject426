@@ -36,6 +36,7 @@ const QString JOINDHT = QString("JoinDHT");
 const QString FILENAME = QString("FileName");
 const QString FILEHASH = QString("FileHash");
 const QString BLOCKLISTHASH = QString("BlockListHash");
+const QString BROADCAST = QString("Broadcast");
 
 
 // Default hop limit
@@ -150,13 +151,11 @@ ChatDialog::ChatDialog() {
 	dhtLabel->setText("Status: Not in DHT");
 	leaveDHT = new QPushButton(QString("Leave DHT"));
 	connect(leaveDHT, SIGNAL(clicked()), this, SLOT(gotLeaveDHT()));
-	connect(this, SIGNAL(leftDHT()), this, SLOT(gotLeftDHT()));
+	connect(sock, SIGNAL(leftDHT()), this, SLOT(gotLeftDHT()));
 	joinDHTBox = new QCheckBox(QString("Join DHT When Available"), this);
 	connect(joinDHTBox, SIGNAL(stateChanged(int)),
-		this, SLOT(changedDHTPreference(int)));
+		sock, SLOT(gotChangedDHTPreference(int)));
 	connect(sock, SIGNAL(joinedDHT()), this, SLOT(gotJoinedDHT()));
-	connect(this, SIGNAL(changeDHTPref(bool)),
-		sock, SLOT(gotChangedDHTPref(bool)));
 
 	// Lay out the widgets to appear in the main window.
 	QVBoxLayout *layout = new QVBoxLayout();
@@ -280,25 +279,15 @@ void ChatDialog::gotSearchInput() {
 
 void ChatDialog::gotJoinedDHT() {
 	dhtLabel->setText("Status: Joined DHT");
-	joinDHTBox->setCheckState(Qt::Unchecked);
 	joinDHTBox->hide();
 	leaveDHT->show();
 }
 
 
-void ChatDialog::changedDHTPreference(int state) {
-	if (state == Qt::Checked) {
-		emit(changeDHTPref(true));
-	} else {
-		emit(changeDHTPref(false));
-	}
-}
-
 void ChatDialog::gotLeaveDHT() {
-	emit(changeDHTPref(false));
+	dhtLabel->setText("Status: Leaving DHT, transferring files");
+	joinDHTBox->setCheckState(Qt::Unchecked);
 	leaveDHT->hide();
-	// TODO: delay this
-	emit(leftDHT());
 }
 
 void ChatDialog::gotLeftDHT() {
@@ -502,18 +491,20 @@ void ChatDialog::processMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer) {
 		// Update dhtStatus
 		sock->updateDhtStatus(&msg);
 
-		// If senderPeer wants to join DHT, process 
 		if (msg.value(JOINDHT).toBool()) {
-			sock->processJoinReq(msg);
+			// If senderPeer wants to join DHT, process
+			sock->processJoinReq(msg, senderPeer);
+		} else {
+			// If wants to leave DHT, update finger table
+			sock->processLeaveReq(msg);
 		}
-		// TODO: if wants to leave and is in finger table,
-		//       update finger table
 	}
 
 	// Monger msg, or broadcast route rumor or dht join request
 	if (msg.find(CHATTEXT) != msg.end()) {
 		sock->monger(&msg, sock->pickPeer(*senderPeer));
 	} else {
+		msg.insert(BROADCAST, true);
 		sock->broadcast(&msg, senderPeer);
 	}
 }
@@ -689,10 +680,10 @@ FingerTable::FingerTable() {
 };
 
 FingerTable::FingerTable(int nSpots, QString originID) {
-    curHash = getHash(nSpots, originID);
+	curHash = getHash(nSpots, originID);
 	items = *(new QVector<FingerTableItem*>());
 	int fingerIndex = 1;
-    oneBehind = originID;
+	oneBehind = originID;
 	while (fingerIndex < nSpots) {
 		FingerTableItem *item = new FingerTableItem();
 		item->intervalStart = (fingerIndex + curHash)%nSpots;
@@ -731,7 +722,7 @@ void FingerTable::addNode(int nSpots, QString originID) {
 			curItem->originID = originID; 
 		}
 	}
-    updateBehindHash(nSpots, originID);
+	updateBehindHash(nSpots, originID);
 	qDebug() << " > added" << originID << "with hash" << newHash;
 	printFingerTable();
 }
@@ -1079,7 +1070,7 @@ bool NetSocket::isMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer) {
 			}
 			return false;
 		}
-	return true;
+		return true;
 	}
 
 	// Preprocess DHT message
@@ -1577,14 +1568,15 @@ void NetSocket::addToFingerTable(QString origin) {
 	fingerTable->addNode(nSpots, origin); 
 }
 
-void NetSocket::gotChangedDHTPref(bool join) {
-	if (join) {
+void NetSocket::gotChangedDHTPreference(int state) {
+	QVariantMap *msg = new QVariantMap();
+
+	if (state == Qt::Checked) {
 		joinDHT = true;
 		// Add any positive join requests in dhtStatus to DHT
 		QMapIterator<QString, QPair<quint32, bool> > it(*dhtStatus);
 		while (it.hasNext()) {
 			it.next();
-
 			if (it.value().second == true) {
 				addToFingerTable(it.key());
 				if (!hasJoinedDHT) {
@@ -1595,11 +1587,14 @@ void NetSocket::gotChangedDHTPref(bool join) {
 		}
 	} else {
 		joinDHT = false;
-		hasJoinedDHT = false; // TODO: correct?
+		if (hasJoinedDHT) {
+			// TODO(rachel): transfer out files to FingerTable->oneAhead via sendThroughFingerTable
+			// TODO(rachel): insert (REPLACEMENT, oneAhead) into msg
+			emit(leftDHT());
+		}
+		hasJoinedDHT = false;
 	}
-
-	// Create and send DHT join message
-	QVariantMap *msg = new QVariantMap();
+ 
 	msg->insert(ORIGIN, originID);
 	msg->insert(SEQNO, dhtSeqNo++);
 	msg->insert(JOINDHT, joinDHT);
@@ -1607,7 +1602,7 @@ void NetSocket::gotChangedDHTPref(bool join) {
 	// Update dhtStatus
 	updateDhtStatus(msg);
 
-	// Broadcast
+	// Broadcast dhtJoin message
 	broadcast(msg, thisPeer);
 }
 
@@ -1617,7 +1612,7 @@ void NetSocket::updateDhtStatus(QVariantMap *msg) {
 	(*dhtStatus)[msg->value(ORIGIN).toString()].second = msg->value(JOINDHT).toBool();
 }
 
-void NetSocket::processJoinReq(QVariantMap msg) {
+void NetSocket::processJoinReq(QVariantMap msg, Peer *senderPeer) {
 	// Check that user wants to join DHT
 	if (joinDHT) {
 		// Join DHT if haven't already done so
@@ -1625,9 +1620,27 @@ void NetSocket::processJoinReq(QVariantMap msg) {
 			hasJoinedDHT = true;
 			emit joinedDHT();
 		}
+		if (msg.find(BROADCAST) == msg.end()) {
+			// Send dhtStatus to msg origin peer, in case they haven't seen all the
+			// join requests yet
+			QMapIterator<QString, QPair<quint32, bool> > it(*dhtStatus);
+			while (it.hasNext()) {
+				it.next();
+				QVariantMap *statMsg = new QVariantMap();
+				statMsg->insert(ORIGIN, it.key());
+				statMsg->insert(SEQNO, it.value().first);
+				statMsg->insert(JOINDHT, it.value().second);
+				statMsg->insert(BROADCAST, true);
+				sendMsg(statMsg, *senderPeer);
+			}
+		}
 		// Add msg origin to DHT
 		addToFingerTable(msg.value(ORIGIN).toString());
 	}
+}
+
+void NetSocket::processLeaveReq(QVariantMap msg) {
+	// TODO(rachel): replace in finger table with REPLACEMENT
 }
 
 // MAIN ------------------------------------------------

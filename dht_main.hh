@@ -101,31 +101,31 @@ public slots:
 
 class FingerTableItem {
 public:
-	FingerTableItem();
-	int intervalStart;
-	int intervalEnd;
-	QString originID;
+    FingerTableItem();
+    int intervalStart;
+    int intervalEnd;
+    QString originID;
 };
 
 
 class FingerTable {
 public:
-	QVector<FingerTableItem*> items;
-	FingerTable();
-	FingerTable(int nSpots, QString originID);
-	// Debug only to print the finger table 
-	void printFingerTable();
-	QString oneBehind;
-	int curHash;
-	// to get the hash function
+    QString oneBehind;
+    int curHash;
+    QVector<FingerTableItem*> items;
+    FingerTable();
+    FingerTable(int nSpots, QString originID);
+    // Debug only to print the finger table 
+    void printFingerTable();
+    // to get the hash function
 	int getHash(int nSpots, QString originId); 
 	// to add a Node 
 	void addNode(int nSpots, QString originID); 
-	// based on a hash get the corresponding string
-	QString getPeerFromHash(int hash);
-	void updateBehindHash(int nSpots, QString newID);
-	// get the distance from the current to the destination, wrapping ish!
-	int getDistance(int nSpots, int dest, int cur);
+    // based on a hash get the corresponding string
+    QString getPeerFromHash(int hash);
+    void updateBehindHash(int nSpots, QString newID);
+    // get the distance from the current to the destination, wrapping ish!
+    int getDistance(int nSpots, int dest, int cur);
 };
 
 class NetSocket : public QUdpSocket {
@@ -207,9 +207,7 @@ public:
 	// budget currently indicated in msg
 	void sendByBudget(QVariantMap msg);
 	// Process request to join DHT
-	void processJoinReq(QVariantMap msg, Peer *senderPeer);
-	// Process request to leave DHT
-	void processLeaveReq(QVariantMap msg);
+	void processJoinReq(QVariantMap msg);
 	// Add msgOrigin to dhtStatus
 	void archiveNewDHT(QString msgOrigin);
 	// Update dhtStatus to reflect new (higher) seqno and join state
@@ -232,8 +230,6 @@ public:
     bool isMyDHTRequest(int desiredLoc);
     QMap<QString, Files> *dhtArchive;
     QString removePrefix(QString withPrefix);
-    void copyFile(QVariantMap msg);
-
 
 
 private:
@@ -246,7 +242,7 @@ private:
 	FingerTable *fingerTable;
 	// List of originIDs with lowest sequence number not seen
 	QVariantMap *status;
-	// List of originIDs with lowest sequence number not seen (Map so that searchable)
+	// List of originIDs with lowest sequence number not seen
 	QMap<QString, QPair<quint32, bool> > *dhtStatus;
 	// Archive of all messages
 	QMap<QString, QMap<quint32, QVariant> > *archive;
@@ -290,7 +286,7 @@ public slots:
     void gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pair, bool isDownload);
 	void gotRetransmit();
 	void gotStartSearchFor(QPair<QString, quint32> pair);
-	void gotChangedDHTPreference(int state);
+	void changedDHTPreference(int state);
 };
 
 class ChatDialog : public QDialog {
@@ -311,7 +307,6 @@ public slots:
 	void gotDownloadReqFromSearch(QListWidgetItem *item);
 	void gotSearchInput();
 	void gotJoinedDHT();
-	void gotLeaveDHT();
 	void gotLeftDHT();
 
 	// Process search reply, adding information to
@@ -331,7 +326,7 @@ private:
 	QLineEdit *portInput;
 	TextEdit *textline;
 	QLabel *pmLabel, *downloadLabel, *dhtLabel;
-	QPushButton *fileShare, *downloadFile, *searchButton, *leaveDHT;
+	QPushButton *fileShare, *downloadFile, *searchButton;
 	QLineEdit *targetNode, *hexBlock, *searchField;
 	QListWidget *searchResults;
 	QCheckBox *joinDHTBox;

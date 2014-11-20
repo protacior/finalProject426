@@ -37,6 +37,7 @@ const QString FILENAME = QString("FileName");
 const QString FILEHASH = QString("FileHash");
 const QString BLOCKLISTHASH = QString("BlockListHash");
 const QString BROADCAST = QString("Broadcast");
+const QString REPLACEMENT = QString("Replacement");
 
 
 // Default hop limit
@@ -494,7 +495,7 @@ void ChatDialog::processMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer) {
 		if (msg.value(JOINDHT).toBool()) {
 			// If senderPeer wants to join DHT, process
 			sock->processJoinReq(msg, senderPeer);
-		} else {
+		} else if (msg.find(REPLACEMENT) != msg.end()){
 			// If wants to leave DHT, update finger table
 			sock->processLeaveReq(msg);
 		}
@@ -1569,6 +1570,7 @@ void NetSocket::addToFingerTable(QString origin) {
 }
 
 void NetSocket::gotChangedDHTPreference(int state) {
+	bool transferFiles = false;
 	QVariantMap *msg = new QVariantMap();
 
 	if (state == Qt::Checked) {
@@ -1588,11 +1590,15 @@ void NetSocket::gotChangedDHTPreference(int state) {
 	} else {
 		joinDHT = false;
 		if (hasJoinedDHT) {
-			// TODO(rachel): transfer out files to FingerTable->oneAhead via sendThroughFingerTable
-			// TODO(rachel): insert (REPLACEMENT, oneAhead) into msg
-			emit(leftDHT());
+			QString oneAhead = fingerTable->items.at(0).originID;
+			// Note replacement node for finger tables, unless current node
+			// is only node in DHT
+			if (oneAhead != originID) {
+				msg->insert(REPLACEMENT, oneAhead);
+				fingerTable->items.at(0).originID = oneAhead;
+				transferFiles = true;
+			}
 		}
-		hasJoinedDHT = false;
 	}
  
 	msg->insert(ORIGIN, originID);
@@ -1604,6 +1610,16 @@ void NetSocket::gotChangedDHTPreference(int state) {
 
 	// Broadcast dhtJoin message
 	broadcast(msg, thisPeer);
+
+	if ((state != Qt::Checked) && hasJoinedDHT) {
+		if (transferFiles) {
+			// TODO(rachel): transfer out files to FingerTable->oneAhead via sendThroughFingerTable
+			
+		}
+		hasJoinedDHT = false;
+		// Report to GUI that has left DHT
+		emit(leftDHT());
+	}
 }
 
 void NetSocket::updateDhtStatus(QVariantMap *msg) {
@@ -1640,7 +1656,15 @@ void NetSocket::processJoinReq(QVariantMap msg, Peer *senderPeer) {
 }
 
 void NetSocket::processLeaveReq(QVariantMap msg) {
-	// TODO(rachel): replace in finger table with REPLACEMENT
+	QString orig = msg.value(ORIGIN);
+	QString repl = msg.value(REPLACEMENT);
+	int ftSize = fingerTable->items.size();
+	// Replace all occurences of leaving originID with specified replacement
+	for (int i = 0; i < ftSize; i++) {
+		if (fingerTable->items.at(i).originID == orig) {
+			fingerTable->items.at(i).originID = repl;
+		}
+	}
 }
 
 // MAIN ------------------------------------------------

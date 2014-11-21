@@ -1393,7 +1393,7 @@ void NetSocket::doTransferRequest(QVariantMap msg) {
     qDebug() << "in doTransferRequest with msg = " << msg; 
     int desiredLoc = (msg[FILEHASH]).toInt();
     qDebug() << "desiredLoc = " << desiredLoc; 
-    if (isMyDHTRequest(desiredLoc)) {
+    if (isMyDHTRequest(desiredLoc)) { // TODO(rachel): bypass this when retransferring
 		
         qDebug() << "IT'S 4 ME!";
         replyToTransferRequest(msg); 

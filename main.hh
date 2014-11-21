@@ -233,6 +233,8 @@ public:
     QMap<QString, Files> *dhtArchive;
     QString removePrefix(QString withPrefix);
     void copyFile(QVariantMap msg);
+    void tranferToAddedNode();
+    void deleteDHTFilesFromNode(FileSharing *toDelete);
 
 
 

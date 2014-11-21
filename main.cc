@@ -14,6 +14,7 @@
 #include <QRegExp>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdio.h>
 #include "main.hh"
 
 // Message field identifiers
@@ -1319,7 +1320,6 @@ void NetSocket::forwardP2P(QVariantMap msg) {
 	sendMsg(&msg, *(routingTable->value(msg.value(DEST).toString())));
 }
 
-// PHASE 2: TERIN 
 void NetSocket::gotShareFiles(FileSharing *share) {
 	QVectorIterator<Files> it(share->files);
 
@@ -1335,32 +1335,11 @@ void NetSocket::gotShareFiles(FileSharing *share) {
         msg->insert(FILEHASH, fileHash);
         msg->insert(BLOCKLISTHASH, file.blocklistHash);
 
-         qDebug() << "UPLOADING FILE";
-         qDebug() << "originId = " << originID;
-         qDebug() << "fileName = " << file.filename;
-         qDebug() << "fileHash = " << fileHash;
-         qDebug() << "blockListHash = " << file.blocklistHash.toHex();
-         qDebug() << "blocklist = " << file.blocklist.toHex();
 
-		if (fileArchive->contains(file.filename)) {
-			qDebug() << "> [ERROR] already uploaded to fileArchive"; 
-			return; 
-		}
+        if (!fileArchive->contains(file.filename)) {
+            fileArchive->insert(file.filename, file);
 
-		fileArchive->insert(file.filename, file); 
-		qDebug() << "> added " << file.filename << " to fileArchive"; 
-		qDebug() << "> fileArchive = " << fileArchive->size(); 
-
-
-
-        // TODO: upload to my directory of uploaded files
-		// if (uploadedFiles->contains(file.fileName)) {
-		// 	return; 
-		// }
-		// QPair<QByteArray, QString> pair = qMakePair(file.blockListHash, originID); 
-		// uploadedFiles->insert(file.fileName, pair);
-
-		// qDebug() << "> added " << file.fileName << " to 'uploadedFiles' ";  
+        }
 
         if (isMyDHTRequest(fileHash)) {
             copyFile(*msg);
@@ -1409,11 +1388,12 @@ void NetSocket::copyFile(QVariantMap msg) {
     FileSharing *fileSharing = new FileSharing();
     Files *file = fileSharing->getFile(fileName);
     file->filename = removePrefix(file->filename);
-    dhtArchive->insert(file->filename, *file);
+    if (!dhtArchive->contains(file->filename)) {
+        dhtArchive->insert(file->filename, *file);
+    }
     qDebug() << "added" << file->filename << "to dhtArchive";
 }
 
-// PHASE 2: TERIN 
 void NetSocket::replyToTransferRequest(QVariantMap msg) {
 
 
@@ -1423,7 +1403,6 @@ void NetSocket::replyToTransferRequest(QVariantMap msg) {
 
 	QPair<QByteArray, QString> pair = qMakePair(blockListHash, originID); 
 	QPair<QString, QPair<QByteArray, QString> > fullPair = qMakePair(fileName, pair); 
-    qDebug() << "< TRANSFER REPLY: asking node " << originID << " for file " << fileName;
     gotReqToDownload(fullPair, false);
 }
 
@@ -1432,8 +1411,8 @@ bool NetSocket::isMyDHTRequest(int desiredLoc) {
     // 2 cases
     int curHash = fingerTable->curHash;
     int oneBehind = fingerTable->getHash(nSpots, fingerTable->oneBehind);
-    qDebug() << "> Looking at hash = " << desiredLoc; 
-    qDebug() << "> I am in charge of " << oneBehind << " < x <= " << curHash; 
+    qDebug() << "> Looking at hash = " << desiredLoc;
+    qDebug() << "> I am in charge of " << oneBehind << " < x <= " << curHash;
     if (curHash == oneBehind) {
         return true;
     } else if (curHash > oneBehind) {
@@ -1446,10 +1425,6 @@ bool NetSocket::isMyDHTRequest(int desiredLoc) {
         }
     }
     return false;
-        // cur > one behind
-            // is <= cur && > oneBehind
-        // cur < oneBehind
-            // <= cur || > oneBehidn
 }
 
 bool NetSocket::isDownloading() {
@@ -1464,11 +1439,7 @@ QString NetSocket::getTargetNode() {
 	return dfile->targetNode;
 }
 
-// TERIN
 void NetSocket::gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pair, bool isDownload) {
-
-
-
 	if (routingTable->find(pair.second.second) == routingTable->end()) {
 		qDebug() << " > invalid target node";
 		return;
@@ -1536,16 +1507,6 @@ QByteArray NetSocket::findBlock(QByteArray blockReq) {
 				}
 				*block = readF.read(MAXBYTES);
 				qDebug() << originID << "found data block" << i-1;
-
-                // TODO: DELETE
-                QCA::init();
-                if (!QCA::isSupported("sha1")) {
-                    qDebug() << "error: SHA-1 not supported";
-                    return *block;
-                }
-                QCA::Hash shaHash("sha1");
-                shaHash.update(*block);
-                // TODO: END DELETE
 
                 qDebug() << "desired hash = " << blockReq.toHex() << " and data hashed = " << shaHash.final().toByteArray().toHex();
                 shaHash.clear();
@@ -1686,6 +1647,29 @@ void NetSocket::sendByBudget(QVariantMap msg) {
 void NetSocket::addToFingerTable(QString origin) {
 	qDebug() << "in node" << originID;
 	fingerTable->addNode(nSpots, origin); 
+    tranferToAddedNode();
+}
+void NetSocket::tranferToAddedNode() {
+    FileSharing *toTransfer = new FileSharing();
+    QMapIterator<QString, Files> it(*dhtArchive);
+    while (it.hasNext()) {
+        it.next();
+        toTransfer->files.push_back(it.value());
+    }
+
+    gotShareFiles(toTransfer);
+    deleteDHTFilesFromNode(toTransfer);
+}
+
+void NetSocket::deleteDHTFilesFromNode(FileSharing *toDelete) {
+    for (int i = 0; i < toDelete->files.size(); i++) {
+        Files file = toDelete->files.at(i);
+        QString fileToDelete = "dht_" + file.filename;
+        remove(fileToDelete.toStdString().c_str());
+        if (dhtArchive->contains(file.filename)) {
+            dhtArchive->remove(file.filename);
+        }
+    }
 }
 
 void NetSocket::gotChangedDHTPreference(int state) {

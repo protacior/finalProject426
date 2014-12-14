@@ -127,8 +127,10 @@ ChatDialog::ChatDialog() {
 	hexBlock->setPlaceholderText(QString("Metafile Hash"));
 	downloadFile = new QPushButton(QString("Download File"), this);
 	connect(downloadFile, SIGNAL(clicked()), this, SLOT(gotDownloadReq()));
-    connect(this, SIGNAL(reqToDownload(QPair<QString, QPair<QByteArray, QString> >, bool)),
-        sock, SLOT(gotReqToDownload(QPair<QString, QPair<QByteArray, QString> >, bool)));
+	connect(this,
+		SIGNAL(reqToDownload(QPair<QString, QPair<QByteArray, QString> >, bool)),
+		sock,
+		SLOT(gotReqToDownload(QPair<QString, QPair<QByteArray, QString> >, bool)));
 
 	// Search field
 	searchField = new QLineEdit(this);
@@ -194,8 +196,8 @@ ChatDialog::ChatDialog() {
 	textline->setFocus();
 
 	setWindowTitle(QString("Peerster (").
-		       append(sock->getOriginID()).
-		       append(QString(")")));
+			   append(sock->getOriginID()).
+			   append(QString(")")));
 }
 
 void ChatDialog::gotReturnPressed() {
@@ -232,7 +234,8 @@ void ChatDialog::gotDownloadReq() {
 	qDebug() << "User request to download" << hexBlock->text()
 		 << "from" << targetNode->text();
 	QPair<QByteArray, QString> pair =
-		qMakePair(QByteArray::fromHex(hexBlock->text().toLatin1()), targetNode->text());
+		qMakePair(QByteArray::fromHex(hexBlock->text().toLatin1()),
+			targetNode->text());
 	QPair<QString, QPair<QByteArray, QString> > fullPair =
 		qMakePair(targetNode->text(), pair);
 	targetNode->clear();
@@ -242,7 +245,7 @@ void ChatDialog::gotDownloadReq() {
 	if (sock->isDownloading()) {
 		qDebug() << "request denied: other download in progress";
 	} else {
-        emit reqToDownload(fullPair, true);
+		emit reqToDownload(fullPair, true);
 	}
 }
 
@@ -257,7 +260,7 @@ void ChatDialog::gotDownloadReqFromSearch(QListWidgetItem *item) {
 		QPair<QByteArray, QString> pair = searchReplyArchive->value(filename);
 		QPair<QString, QPair<QByteArray, QString> > fullPair =
 			qMakePair(filename, pair);
-        sock->gotReqToDownload(fullPair, true);
+		sock->gotReqToDownload(fullPair, true);
 	}
 }
 
@@ -337,7 +340,9 @@ void ChatDialog::readMsg() {
 
 		// Triage based on datagram type
 		if (sock->isTransferRequest(msg)) {
-			qDebug() << sock->getOriginID() << "got transfer request message for file = " << msg[FILENAME].toString();
+			qDebug() << sock->getOriginID() <<
+				"got transfer request message for file = "
+				<< msg[FILENAME].toString();
 			sock->doTransferRequest(msg);
 		} else if (sock->isP2P(msg)) {
 			QString msgDest = msg.value(DEST).toString();
@@ -349,8 +354,8 @@ void ChatDialog::readMsg() {
 				if (msg.find(CHATTEXT) != msg.end()) {
 					// Display PM
 					displayText(msg.value(ORIGIN).toString().
-						    append(QString(" (PM)")),
-						    msg.value(CHATTEXT).toString());
+							append(QString(" (PM)")),
+							msg.value(CHATTEXT).toString());
 				} else if (msg.find(BLOCKREQ) != msg.end()) {
 
 
@@ -358,9 +363,10 @@ void ChatDialog::readMsg() {
 					// or a blocklist metafile
 					QByteArray blockReq = msg.value(BLOCKREQ).toByteArray();
 					/*
-                    qDebug() << sock->getOriginID() <<
-                        "received block request from" <<
-                        msg.value(ORIGIN).toString() << "asking for" << blockReq.toHex();
+					qDebug() << sock->getOriginID() <<
+						"received block request from" <<
+						msg.value(ORIGIN).toString() << "asking for"
+						<< blockReq.toHex();
 					*/
 					// Find block or blocklist metadata
 					// from internal database
@@ -383,14 +389,15 @@ void ChatDialog::readMsg() {
 						toByteArray();
 					QByteArray data = msg.value(DATA).toByteArray();
 					/*
-                    qDebug() << sock->getOriginID() <<
-                        "received block reply from" <<
-                        msg.value(ORIGIN).toString() << "asking for" << blockReply.toHex();
+					qDebug() << sock->getOriginID() <<
+						"received block reply from" <<
+						msg.value(ORIGIN).toString() << "asking for"
+						<< blockReply.toHex();
 					*/
 					// Check that this data is expected
 					if (blockReply != sock->getDfileBlockReq() ||
-					    msg.value(ORIGIN).toString() !=
-					    sock->getTargetNode()) {
+						msg.value(ORIGIN).toString() !=
+						sock->getTargetNode()) {
 						qDebug() << sock->getOriginID() <<
 							"received unrequested reply";
 					} else {
@@ -406,8 +413,10 @@ void ChatDialog::readMsg() {
 							sock->processBlockReply(data);
 						} else {
 							qDebug() << sock->getOriginID()
-								 << "hashes not equal";
-                            qDebug() << "requestedBlock = " << blockReply.toHex() << " and data when hashed = " << shaHash.final().toByteArray().toHex();
+								<< "hashes not equal";
+							qDebug() << "requestedBlock = " << blockReply.toHex()
+								<< " and data when hashed = "
+								<< shaHash.final().toByteArray().toHex();
 						}
 						// NOTE: discards message where hashes don't agree
 					}
@@ -446,7 +455,7 @@ void ChatDialog::readMsg() {
 				*/
 
 				displayText(msg.value(ORIGIN).toString(),
-					    msg.value(CHATTEXT).toString());
+						msg.value(CHATTEXT).toString());
 			}
 			/*
 			qDebug() << sock->getOriginID() << "got route from " << 
@@ -478,7 +487,7 @@ void ChatDialog::processMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer) {
 		// Add last public IP address to peerList
 		QHostAddress h;
 		if (msg.find(LASTIP) != msg.end() && 
-		    msg.find(LASTPORT) != msg.end()) {
+			msg.find(LASTPORT) != msg.end()) {
 			h = QHostAddress(msg[LASTIP].toUInt());
 			sock->learnPeer(h, msg[LASTPORT].toUInt());
 		}
@@ -520,8 +529,8 @@ void ChatDialog::newPrivateMsg(QString origin) {
 	PrivateMessage *window = new PrivateMessage(origin);
 
 	window->setWindowTitle(QString("Peerster (").
-			       append(QString::number(sock->getThisPort())).
-					     append(QString(")")));
+				   append(QString::number(sock->getThisPort())).
+						 append(QString(")")));
 	window->show();
 
 	connect(window, SIGNAL(sendPM(QVariantMap)),
@@ -542,13 +551,13 @@ void ChatDialog::shareFile() {
 
 void ChatDialog::processSearchRep(QVariantMap msg) {
 	if (msg.value(SEARCHREP).toString() == searchRequest &&
-	    msg.value(ORIGIN).toString() != sock->getOriginID()) {
+		msg.value(ORIGIN).toString() != sock->getOriginID()) {
 		QString orig = msg.value(ORIGIN).toString();
 		QVariantList filenames  = msg.value(MATCHNAMES).toList();
 		QVariantList metadataHashes = msg.value(MATCHIDS).toList();
 		while (!filenames.isEmpty() && !metadataHashes.isEmpty()) {
 			if (searchReplyArchive->find(filenames.first().toString()) ==
-			    searchReplyArchive->end()) {
+				searchReplyArchive->end()) {
 				// Add information to searchReplyArchive
 				QPair<QByteArray, QString> pair = 
 					qMakePair(metadataHashes.first().toByteArray(), orig);
@@ -590,11 +599,11 @@ void FileSharing::gotFilesSelected(QStringList fileList) {
 
 	QStringListIterator it(fileList);
 	while (it.hasNext()) {
-        Files *file = getFile(it.next());
-        if (file == NULL) {
-            continue;
-        }
-        //		Files *file = new Files();
+		Files *file = getFile(it.next());
+		if (file == NULL) {
+			continue;
+		}
+		//		Files *file = new Files();
 
 //		file->filename = it.next();
 //		QFile qfile(file->filename);
@@ -622,42 +631,42 @@ void FileSharing::gotFilesSelected(QStringList fileList) {
 //		// Get relative file name
 //		QStringList parts = file->filename.split("/");
 //		file->filename = parts.last();
-        files.append(*file);
+		files.append(*file);
 	}
 
 	emit shareFiles(this);
 }
 
 Files* FileSharing::getFile(QString fileName) {
-    Files *file = new Files();
+	Files *file = new Files();
 
-    file->filename = fileName;
-    QFile qfile(file->filename);
-    if (!qfile.open(QIODevice::ReadOnly)) {
-        qDebug() << "error: could not open file" << file->filename;
-        return NULL;
-    }
+	file->filename = fileName;
+	QFile qfile(file->filename);
+	if (!qfile.open(QIODevice::ReadOnly)) {
+		qDebug() << "error: could not open file" << file->filename;
+		return NULL;
+	}
 
-    file->filesize = qfile.size();
+	file->filesize = qfile.size();
 
-    // Compute hash for each block and append to blocklist
-    QCA::Hash shaHash("sha1");
-    QByteArray read;
-    while (!(read = qfile.read(MAXBYTES)).isEmpty()) {
-        shaHash.update(read);
-        file->blocklist.append(shaHash.final().toByteArray());
-        shaHash.clear();
-    }
+	// Compute hash for each block and append to blocklist
+	QCA::Hash shaHash("sha1");
+	QByteArray read;
+	while (!(read = qfile.read(MAXBYTES)).isEmpty()) {
+		shaHash.update(read);
+		file->blocklist.append(shaHash.final().toByteArray());
+		shaHash.clear();
+	}
 
-    // Take hash of blocklist
-    shaHash.update(file->blocklist);
-    file->blocklistHash = shaHash.final().toByteArray();
-    qDebug() << " > hash of file: " << file->blocklistHash.toHex();
+	// Take hash of blocklist
+	shaHash.update(file->blocklist);
+	file->blocklistHash = shaHash.final().toByteArray();
+	qDebug() << " > hash of file: " << file->blocklistHash.toHex();
 
-    // Get relative file name
-    QStringList parts = file->filename.split("/");
-    file->filename = parts.last();
-    return file;
+	// Get relative file name
+	QStringList parts = file->filename.split("/");
+	file->filename = parts.last();
+	return file;
 }
 
 // PRIVATEMESSAGE FUNCTIONS ------------------------------------------------
@@ -718,8 +727,8 @@ QString Peer::toString() {
 
 // FINGER TABLE FUNCTIONS ---------------------------------------------
 FingerTable::FingerTable() {
-    oneBehind = "";
-    curHash = 0;
+	oneBehind = "";
+	curHash = 0;
 };
 
 FingerTable::FingerTable(int nSpots, QString originID) {
@@ -771,52 +780,53 @@ void FingerTable::addNode(int nSpots, QString originID) {
 }
 
 void FingerTable::updateBehindHash(int nSpots, QString newID) {
-    int behindHash = getHash(nSpots, oneBehind);
-    int nodeHash = getHash(nSpots, newID);
-    int oldDistance = getDistance(nSpots, curHash, behindHash);
-    int newDistance = getDistance(nSpots, curHash, nodeHash);
+	int behindHash = getHash(nSpots, oneBehind);
+	int nodeHash = getHash(nSpots, newID);
+	int oldDistance = getDistance(nSpots, curHash, behindHash);
+	int newDistance = getDistance(nSpots, curHash, nodeHash);
 
-    if (newDistance < oldDistance) {
-        oneBehind = newID;
-    }
+	if (newDistance < oldDistance) {
+		oneBehind = newID;
+	}
 }
 
 int FingerTable::getDistance(int nSpots, int dest, int cur) {
-    if (cur < dest) {
-        return dest - cur;
-    } else {
-        return nSpots - cur + dest;
-    }
+	if (cur < dest) {
+		return dest - cur;
+	} else {
+		return nSpots - cur + dest;
+	}
 }
 
 QString FingerTable::getPeerFromHash(int hash) {
 
-    for (int i = 0; i < items.size(); i++) {
-        FingerTableItem *curItem = items.at(i);
-        int low = curItem->intervalStart;
-        int high = curItem->intervalEnd;
+	for (int i = 0; i < items.size(); i++) {
+		FingerTableItem *curItem = items.at(i);
+		int low = curItem->intervalStart;
+		int high = curItem->intervalEnd;
 
-        if (high < low) {
-            if (hash < high || hash >= low) {
-                return curItem->originID;
-            }
-        } else {
-            if (hash >= low && hash < high) {
-               return curItem->originID;
-            }
-        }
-    }
+		if (high < low) {
+			if (hash < high || hash >= low) {
+				return curItem->originID;
+			}
+		} else {
+			if (hash >= low && hash < high) {
+			   return curItem->originID;
+			}
+		}
+	}
 
-    return "";
+	return "";
 }
 
 void FingerTable::printFingerTable() {
 	for (int i = 0; i < items.size(); i++) {
 		FingerTableItem* curItem = items.at(i); 
-		qDebug() << " START = " << curItem->intervalStart << " END = " << curItem->intervalEnd << " ORIGINID = " << curItem->originID; 
+		qDebug() << " START = " << curItem->intervalStart << " END = "
+		<< curItem->intervalEnd << " ORIGINID = " << curItem->originID; 
 	}
-    qDebug() << "CUR HASH = " << curHash;
-    qDebug() << "ONE BEHIND = " << oneBehind;
+	qDebug() << "CUR HASH = " << curHash;
+	qDebug() << "ONE BEHIND = " << oneBehind;
 }
 
 int FingerTable::getHash(int nSpots, QString originId) {
@@ -834,9 +844,9 @@ int FingerTable::getHash(int nSpots, QString originId) {
 
 // FINGER TALBE ITEM FUNCTIONS -----------------------------------------
 FingerTableItem::FingerTableItem() {
-    intervalStart = 0;
-    intervalEnd = 0;
-    originID = "";
+	intervalStart = 0;
+	intervalEnd = 0;
+	originID = "";
 }
 
 // NETSOCKET FUNCTIONS ------------------------------------------------
@@ -854,7 +864,7 @@ NetSocket::NetSocket() {
 	seqNo = 1;
 	dhtSeqNo = 1;
 	noForward = false;
-    nSpots = 32;
+	nSpots = 32;
 	// myDHTHash = 4;
 	// fingerTable = new FingerTable(nSpots, myDHTHash);
 }
@@ -940,7 +950,8 @@ bool NetSocket::bind() {
 
 			// Initialize fileArchive
 			fileArchive = new QMap<QString, Files>();
-            dhtArchive = new QMap<QString, Files>();
+			dhtArchive = new QMap<QString, Files>();
+			redundancyArchive = new QMap<QString, Files>();
 
 			// Initialize downloading information
 			downloading = false;
@@ -1015,7 +1026,7 @@ void NetSocket::processMsg(QVariantMap *msg) {
 Peer* NetSocket::pickPeer(Peer sender) {
 	// If no (other) peers, return NULL
 	if (peerList.size() == 0 ||
-	    (!sender.isEqual(*thisPeer) && peerList.size() <= 1)) {
+		(!sender.isEqual(*thisPeer) && peerList.size() <= 1)) {
 		return NULL;
 	}
 
@@ -1048,9 +1059,9 @@ void NetSocket::sendMsg(QVariantMap *msg, Peer p) {
 	// Send message if this peerster is a forwarding peerster, OR
 	// if msg is a status, from this peerster, or a route rumor
 	if (!noForward ||
-	    ((msg->find(WANT) != msg->end()) ||
-	     (msg->value(ORIGIN).toString() == originID) ||
-	     (msg->find(CHATTEXT) == msg->end()))) {
+		((msg->find(WANT) != msg->end()) ||
+		 (msg->value(ORIGIN).toString() == originID) ||
+		 (msg->find(CHATTEXT) == msg->end()))) {
 		QByteArray a;
 		QDataStream s(&a, QIODevice::WriteOnly);
 		s << *msg;
@@ -1079,7 +1090,7 @@ void NetSocket::archiveNew(QString msgOrigin) {
 
 bool NetSocket::isMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer) {
 	if (msg.find(ORIGIN) == msg.end() ||
-	    msg.find(SEQNO) == msg.end()) {
+		msg.find(SEQNO) == msg.end()) {
 		return false;
 	}
 
@@ -1094,9 +1105,9 @@ bool NetSocket::isMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer) {
 		if (msg.value(SEQNO) != status->value(msgOrigin)) {
 			// Update routingTable if msg contains direct route
 			if ((msg.value(SEQNO).toUInt() ==
-			     status->value(msgOrigin).toUInt() - 1) &&
-			    (msg.find(LASTIP) == msg.end()) &&
-			    (msg.find(LASTPORT) == msg.end())) {
+				 status->value(msgOrigin).toUInt() - 1) &&
+				(msg.find(LASTIP) == msg.end()) &&
+				(msg.find(LASTPORT) == msg.end())) {
 				addToRT(msgOrigin, senderPeer);
 			}
 			return false;
@@ -1109,7 +1120,8 @@ bool NetSocket::isMsgOrRouteOrDHT(QVariantMap msg, Peer *senderPeer) {
 	// If msgOrigin is new, add it to dhtStatus
 	archiveNewDHT(msgOrigin);
 
-	// If wanted SeqNo for msgOrigin is larger than the one given, declare an invalid message
+	// If wanted SeqNo for msgOrigin is larger than the one given,
+	// declare an invalid message
 	if (msg.value(SEQNO).toUInt() < dhtStatus->value(msgOrigin).first) {
 		return false;
 	}
@@ -1127,15 +1139,15 @@ void NetSocket::archiveNewDHT(QString msgOrigin) {
 
 bool NetSocket::isP2P(QVariantMap msg) {
 	if (msg.find(DEST) == msg.end() ||
-	    msg.find(ORIGIN) == msg.end() ||
-	    msg.find(HOPLIMIT) == msg.end() ||
-	    !(msg.find(CHATTEXT) == msg.end() ||
-	      msg.find(BLOCKREQ) == msg.end() ||
-	      (msg.find(BLOCKREPLY) == msg.end() &&
-	       msg.find(DATA) == msg.end()) ||
-	      (msg.find(SEARCHREP) == msg.end() &&
-	       msg.find(MATCHNAMES) == msg.end() &&
-	       msg.find(MATCHIDS) == msg.end()))) {
+		msg.find(ORIGIN) == msg.end() ||
+		msg.find(HOPLIMIT) == msg.end() ||
+		!(msg.find(CHATTEXT) == msg.end() ||
+		  msg.find(BLOCKREQ) == msg.end() ||
+		  (msg.find(BLOCKREPLY) == msg.end() &&
+		   msg.find(DATA) == msg.end()) ||
+		  (msg.find(SEARCHREP) == msg.end() &&
+		   msg.find(MATCHNAMES) == msg.end() &&
+		   msg.find(MATCHIDS) == msg.end()))) {
 		return false;
 	}
 	return true;
@@ -1143,8 +1155,8 @@ bool NetSocket::isP2P(QVariantMap msg) {
 
 bool NetSocket::isSearchReq(QVariantMap msg) {
 	if (msg.find(ORIGIN) == msg.end() ||
-	    msg.find(SEARCH) == msg.end() ||
-	    msg.find(BUDGET) == msg.end()) {
+		msg.find(SEARCH) == msg.end() ||
+		msg.find(BUDGET) == msg.end()) {
 		return false;
 	}
 	return true;
@@ -1264,7 +1276,7 @@ void NetSocket::argToPeer(QString arg) {
 	} else {
 		hostPorts->insert(sections[0], sections[1].toUInt());
 		QHostInfo::lookupHost(sections[0],
-				      this, SLOT(lookedUp(QHostInfo)));
+					  this, SLOT(lookedUp(QHostInfo)));
 	}
 }
 
@@ -1274,7 +1286,7 @@ void NetSocket::lookedUp(QHostInfo hostInfo) {
 		QListIterator<QHostAddress> it(addresses);
 		while (it.hasNext()) {
 			if (hostPorts->find(hostInfo.hostName()) !=
-			    hostPorts->end()) {
+				hostPorts->end()) {
 				learnPeer(it.next(),
 					  hostPorts->value(hostInfo.hostName()));
 				hostPorts->erase(hostPorts->find(hostInfo.
@@ -1322,110 +1334,105 @@ void NetSocket::forwardP2P(QVariantMap msg) {
 void NetSocket::gotShareFiles(FileSharing *share) {
 	QVectorIterator<Files> it(share->files);
 
-
 	while (it.hasNext()) {
 		// Store each file to be shared in internal database
 		Files file = it.next();
 
-        QVariantMap *msg = new QVariantMap();
-        int fileHash = fingerTable->getHash(nSpots, file.filename);
-        msg->insert(ORIGIN, originID);
-        msg->insert(FILENAME, file.filename);
-        msg->insert(FILEHASH, fileHash);
-        msg->insert(BLOCKLISTHASH, file.blocklistHash);
+		QVariantMap *msg = new QVariantMap();
+		int fileHash = fingerTable->getHash(nSpots, file.filename);
+		msg->insert(ORIGIN, originID);
+		msg->insert(FILENAME, file.filename);
+		msg->insert(FILEHASH, fileHash);
+		msg->insert(BLOCKLISTHASH, file.blocklistHash);
 
+		if (!fileArchive->contains(file.filename)) {
+			fileArchive->insert(file.filename, file);
+		}
 
-        if (!fileArchive->contains(file.filename)) {
-            fileArchive->insert(file.filename, file);
-
-        }
-
-        if (isMyDHTRequest(fileHash)) {
-            copyFile(*msg);
-        } else {
-            sendThroughFingerTable(msg);
-        }
+		if (isMyDHTRequest(fileHash)) {
+			copyFile(*msg);
+		} else {
+			sendThroughFingerTable(msg);
+		}
 	}
 }
 
 void NetSocket::sendThroughFingerTable(QVariantMap *msg) {
 
 	// fingerTable->printFingerTable();
-    QString dest = fingerTable->getPeerFromHash(((*msg)[FILEHASH]).toInt());
+	QString dest = fingerTable->getPeerFromHash(((*msg)[FILEHASH]).toInt());
 
-    qDebug() << " sending file to " << dest;
-    // Find originID in routing table
-    Peer *peer = routingTable->value(dest);
-    // Send to that peer
-    sendMsg(msg, *peer);
+	qDebug() << " sending file to " << dest;
+	// Find originID in routing table
+	Peer *peer = routingTable->value(dest);
+	// Send to that peer
+	sendMsg(msg, *peer);
 }
 
 bool NetSocket::isTransferRequest(QVariantMap msg) {
-    if (msg.contains(ORIGIN) && msg.contains(FILENAME) &&
+	if (msg.contains(ORIGIN) && msg.contains(FILENAME) &&
 	msg.contains(FILEHASH) && msg.contains(BLOCKLISTHASH) &&
 	!msg.contains(REPLACEMENT)) {
-        return true;
-    }
-    return false;
+		return true;
+	}
+	return false;
 }
 
 void NetSocket::doTransferRequest(QVariantMap msg) {
-    qDebug() << "in doTransferRequest with msg = " << msg; 
-    int desiredLoc = (msg[FILEHASH]).toInt();
-    qDebug() << "desiredLoc = " << desiredLoc; 
-    if (isMyDHTRequest(desiredLoc)) {
+	qDebug() << "in doTransferRequest with msg = " << msg; 
+	int desiredLoc = (msg[FILEHASH]).toInt();
+	qDebug() << "desiredLoc = " << desiredLoc; 
+	if (isMyDHTRequest(desiredLoc)) {
 		
-        qDebug() << "IT'S 4 ME!";
-        replyToTransferRequest(msg); 
-    } else {
-        qDebug() << " sending through the finger table again!";
-        sendThroughFingerTable(&msg);
-    }
+		qDebug() << "IT'S 4 ME!";
+		replyToTransferRequest(msg); 
+	} else {
+		qDebug() << " sending through the finger table again!";
+		sendThroughFingerTable(&msg);
+	}
 }
 
 void NetSocket::copyFile(QVariantMap msg) {
-    QString fileName = msg[FILENAME].toString();
+	QString fileName = msg[FILENAME].toString();
 
-    FileSharing *fileSharing = new FileSharing();
-    Files *file = fileSharing->getFile(fileName);
-    file->filename = removePrefix(file->filename);
-    if (!dhtArchive->contains(file->filename)) {
-        dhtArchive->insert(file->filename, *file);
-    }
-    qDebug() << "added" << file->filename << "to dhtArchive";
+	FileSharing *fileSharing = new FileSharing();
+	Files *file = fileSharing->getFile(fileName);
+	file->filename = removePrefix(file->filename);
+	if (!dhtArchive->contains(file->filename)) {
+		dhtArchive->insert(file->filename, *file);
+	}
+	qDebug() << "added" << file->filename << "to dhtArchive";
 }
 
 void NetSocket::replyToTransferRequest(QVariantMap msg) {
-
-
-    QString originID = msg[ORIGIN].toString();
+	QString originID = msg[ORIGIN].toString();
 	QString fileName = msg[FILENAME].toString(); 
 	QByteArray blockListHash = msg[BLOCKLISTHASH].toByteArray(); 
 
 	QPair<QByteArray, QString> pair = qMakePair(blockListHash, originID); 
 	QPair<QString, QPair<QByteArray, QString> > fullPair = qMakePair(fileName, pair); 
-    gotReqToDownload(fullPair, false);
+	gotReqToDownload(fullPair, false);
 }
 
 bool NetSocket::isMyDHTRequest(int desiredLoc) {
-    // need to check if desiredLocation is BETWEEN one behind and cur
-    // 2 cases
-    int curHash = fingerTable->curHash;
-    int oneBehind = fingerTable->getHash(nSpots, fingerTable->oneBehind);
-    qDebug() << originID << "Looking at hash = " << desiredLoc
-	     << "and I am in charge of " << oneBehind << " < x <= " << curHash;
-    if (curHash == oneBehind) {
-        return true;
-    } else if (curHash > oneBehind) {
-        if (desiredLoc <= curHash && desiredLoc > oneBehind) {
-            return true;
-        }
-    } else {
-        if (desiredLoc <= curHash || desiredLoc > oneBehind) {
-            return true;
-        }
-    }
-    return false;
+	// need to check if desiredLocation is BETWEEN one behind and cur
+	// 2 cases
+	int curHash = fingerTable->curHash;
+	int oneBehind = fingerTable->getHash(nSpots, fingerTable->oneBehind);
+	qDebug() << originID << "Looking at hash = " << desiredLoc
+		 << "and I am in charge of " << oneBehind << " < x <= " << curHash;
+	if (curHash == oneBehind) {
+		return true;
+	} else if (curHash > oneBehind) {
+		if (desiredLoc <= curHash && desiredLoc > oneBehind) {
+			return true;
+		}
+	} else {
+		if (desiredLoc <= curHash || desiredLoc > oneBehind) {
+			return true;
+		}
+	}
+	return false;
 }
 
 bool NetSocket::isDownloading() {
@@ -1440,7 +1447,8 @@ QString NetSocket::getTargetNode() {
 	return dfile->targetNode;
 }
 
-void NetSocket::gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pair, bool isDownload) {
+void NetSocket::gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pair,
+	bool isDownload) {
 	if (routingTable->find(pair.second.second) == routingTable->end()) {
 		qDebug() << " > invalid target node" << pair.second.second;
 		return;
@@ -1465,16 +1473,16 @@ void NetSocket::gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pai
 	dfile->blocksDownloaded = 0;
 	dfile->dest = *dest;
 	dfile->msg = msg;
-    dfile->isDownload = isDownload;
+	dfile->isDownload = isDownload;
 	dfile->file = new Files();
 
 	// Set file name as relative file name
 	QStringList parts = pair.first.split("/");
-    QString prefix = "download_";
-    if (!isDownload) {
-        prefix = "dht_";
-    }
-    dfile->file->filename = prefix.append(parts.last());
+	QString prefix = "download_";
+	if (!isDownload) {
+		prefix = "dht_";
+	}
+	dfile->file->filename = prefix.append(parts.last());
 
 	// Every 2 seconds, retransmit request
 	dfile->retransmit = new QTimer(this);
@@ -1491,7 +1499,10 @@ QByteArray NetSocket::findBlock(QByteArray blockReq) {
 		Files file = it.next().value();
 		// Return blocklist metafile if given a blocklistHash
 		if (file.blocklistHash == blockReq) {
-			// qDebug() << originID << "found blocklist metafile" << blockReq.toHex();
+			/*
+			qDebug() << originID << "found blocklist metafile"
+				<< blockReq.toHex();
+			*/
 			*block = QByteArray(file.blocklist);
 			return *block;
 		}
@@ -1499,9 +1510,10 @@ QByteArray NetSocket::findBlock(QByteArray blockReq) {
 		for (qint64 i = 1; i <= file.filesize; i++) {
 			qint64 blockIndex = (i-1) * 20;
 			/*
-            qDebug() << "looking for " << blockReq.toHex() << " and is at index " << file.blocklist.indexOf(blockReq, blockIndex) << " of blockList";
+			qDebug() << "looking for " << blockReq.toHex() << " and is at index "
+				<< file.blocklist.indexOf(blockReq, blockIndex) << " of blockList";
 			*/
-            if (file.blocklist.indexOf(blockReq, blockIndex) == blockIndex) {
+			if (file.blocklist.indexOf(blockReq, blockIndex) == blockIndex) {
 				QFile readF(file.filename);
 				readF.open(QIODevice::ReadOnly);
 				if (!readF.seek((i-1)*MAXBYTES)) {
@@ -1518,12 +1530,12 @@ QByteArray NetSocket::findBlock(QByteArray blockReq) {
 }
 
 QString NetSocket::removePrefix(QString withPrefix) {
-    if (withPrefix.startsWith("download_")) {
-        return withPrefix.remove("download_");
-    } else if (withPrefix.startsWith("dht_")) {
-        return withPrefix.remove("dht_");
-    }
-    return withPrefix;
+	if (withPrefix.startsWith("download_")) {
+		return withPrefix.remove("download_");
+	} else if (withPrefix.startsWith("dht_")) {
+		return withPrefix.remove("dht_");
+	}
+	return withPrefix;
 }
 
 void NetSocket::processBlockReply(QByteArray data) {
@@ -1551,18 +1563,19 @@ void NetSocket::processBlockReply(QByteArray data) {
 		downloading = false;
 
 		dfile->writeFile->close();
-        FileSharing *fileSharing = new FileSharing();
-        Files *file = fileSharing->getFile(dfile->file->filename);
-        file->filename = removePrefix(file->filename);
-        dhtArchive->insert(file->filename, *file);
-        qDebug() << "added" << removePrefix(dfile->file->filename) << "to dhtArchive";
+		FileSharing *fileSharing = new FileSharing();
+		Files *file = fileSharing->getFile(dfile->file->filename);
+		file->filename = removePrefix(file->filename);
+		dhtArchive->insert(file->filename, *file);
+		qDebug() << "added" << removePrefix(dfile->file->filename)
+			<< "to dhtArchive";
 	} else {
 		// Form and send next block request
 		dfile->msg->remove(BLOCKREQ);
 		QByteArray *newBlockReq = new QByteArray();
 		for (int i = 0; i < 20; i++) {
 			newBlockReq->append(dfile->file->blocklist.
-					    at(20*(dfile->blocksDownloaded)+i));
+						at(20*(dfile->blocksDownloaded)+i));
 		}
 		dfile->msg->insert(BLOCKREQ, *newBlockReq);
 
@@ -1586,8 +1599,8 @@ void NetSocket::processSearchReq(QVariantMap msg, Peer p) {
 	QVariantList *ids = new QVariantList();
 
 	QStringList strings = msg.value(SEARCH).toString().split(QRegExp("\\s+"));
-    QMapIterator<QString, Files> it(*dhtArchive);
-    //QMapIterator<QString, Files> it(*fileArchive);
+	QMapIterator<QString, Files> it(*dhtArchive);
+	//QMapIterator<QString, Files> it(*fileArchive);
 	while (it.hasNext()) {
 		QString filename = it.next().key();
 
@@ -1646,30 +1659,30 @@ void NetSocket::sendByBudget(QVariantMap msg) {
 void NetSocket::addToFingerTable(QString origin) {
 	qDebug() << "in node" << originID;
 	fingerTable->addNode(nSpots, origin); 
-    transferToAddedNode();
+	transferToAddedNode();
 }
 
 void NetSocket::transferToAddedNode() {
-    FileSharing *toTransfer = new FileSharing();
-    QMapIterator<QString, Files> it(*dhtArchive);
-    while (it.hasNext()) {
-        it.next();
-        toTransfer->files.push_back(it.value());
-    }
+	FileSharing *toTransfer = new FileSharing();
+	QMapIterator<QString, Files> it(*dhtArchive);
+	while (it.hasNext()) {
+		it.next();
+		toTransfer->files.push_back(it.value());
+	}
 
-    gotShareFiles(toTransfer);
-    deleteDHTFilesFromNode(toTransfer);
+	deleteDHTFilesFromNode(toTransfer);
+	gotShareFiles(toTransfer);
 }
 
 void NetSocket::deleteDHTFilesFromNode(FileSharing *toDelete) {
-    for (int i = 0; i < toDelete->files.size(); i++) {
-        Files file = toDelete->files.at(i);
-        QString fileToDelete = "dht_" + file.filename;
-        remove(fileToDelete.toStdString().c_str());
-        if (dhtArchive->contains(file.filename)) {
-            dhtArchive->remove(file.filename);
-        }
-    }
+	for (int i = 0; i < toDelete->files.size(); i++) {
+		Files file = toDelete->files.at(i);
+		QString fileToDelete = "dht_" + file.filename;
+		remove(fileToDelete.toStdString().c_str());
+		if (dhtArchive->contains(file.filename)) {
+			dhtArchive->remove(file.filename);
+		}
+	}
 }
 
 void NetSocket::gotChangedDHTPreference(int state) {
@@ -1751,8 +1764,10 @@ void NetSocket::gotChangedDHTPreference(int state) {
 
 void NetSocket::updateDhtStatus(QVariantMap *msg) {
 	// NOTE: assumes msg SEQNO is higher than current value in dhtStatus
-	(*dhtStatus)[msg->value(ORIGIN).toString()].first = msg->value(SEQNO).toUInt() + 1;
-	(*dhtStatus)[msg->value(ORIGIN).toString()].second = msg->value(JOINDHT).toBool();
+	(*dhtStatus)[msg->value(ORIGIN).toString()].first =
+		msg->value(SEQNO).toUInt() + 1;
+	(*dhtStatus)[msg->value(ORIGIN).toString()].second =
+		msg->value(JOINDHT).toBool();
 }
 
 void NetSocket::processJoinReq(QVariantMap msg, Peer *senderPeer) {

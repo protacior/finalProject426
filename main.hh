@@ -145,8 +145,6 @@ public:
 	// files that i've tried to upload to the DHT. 
 	QMap<QString, QPair<QByteArray, QString> > *uploadedFiles;
 
-
-
 	QComboBox *originList;
 
 	// Bind local peerster to a socket
@@ -217,7 +215,6 @@ public:
 	// Add to finger table
 	void addToFingerTable(QString origin);
 
-
     // new stuff
     // is TransferRequest
     bool isTransferRequest(QVariantMap msg);
@@ -230,13 +227,14 @@ public:
     // send it to corresponding node in fingerTable
     void sendThroughFingerTable(QVariantMap *msg);
     bool isMyDHTRequest(int desiredLoc);
+    // Archive of files owned by this peer: Map<filename, file>
     QMap<QString, Files> *dhtArchive;
+    // Archive of files owned as redundant copies by this peer: Map<filename, file>
+    QMap<QString, Files> *redundancyArchive;
     QString removePrefix(QString withPrefix);
     void copyFile(QVariantMap msg);
     void transferToAddedNode();
     void deleteDHTFilesFromNode(FileSharing *toDelete);
-
-
 
 private:
 	quint16 myPortMin, myPortMax, thisPort;
@@ -250,7 +248,7 @@ private:
 	QVariantMap *status;
 	// List of originIDs with lowest sequence number not seen (Map so that searchable)
 	QMap<QString, QPair<quint32, bool> > *dhtStatus;
-	// Archive of all messages
+	// Archive of all messages: Map<originID, Map<seqNo, msg> >
 	QMap<QString, QMap<quint32, QVariant> > *archive;
 	// List of all peers (excluding self)
 	QVector<Peer> peerList;
@@ -266,7 +264,7 @@ private:
 	QTimer *routeTimer;
 	// Flag for whether noforward command link option is specified
 	bool noForward;
-	// Archive of Files on this peer
+	// Archive of Files downloaded by this peer: Map<filename, file>
 	QMap<QString, Files> *fileArchive;
 	// Whether there is a file being downloaded
 	bool downloading;
@@ -346,7 +344,6 @@ private:
 
 	// Timer to resend search request
 	QTimer *searchTimer;
-
 };
 
 #endif // PEERSTER_MAIN_HH

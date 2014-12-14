@@ -142,6 +142,7 @@ public:
 	bool isDownloading();
 	QByteArray getDfileBlockReq();
 	QString getTargetNode();
+
 	// files that i've tried to upload to the DHT. 
 	QMap<QString, QPair<QByteArray, QString> > *uploadedFiles;
 
@@ -215,29 +216,37 @@ public:
 	// Add to finger table
 	void addToFingerTable(QString origin);
 
-    // new stuff
-    // is TransferRequest
-    bool isTransferRequest(QVariantMap msg);
-    // foundTransferRequest
-    void doTransferRequest(QVariantMap msg);
+	// new stuff
+	// is TransferRequest
+	bool isTransferRequest(QVariantMap msg);
+	// foundTransferRequest
+	void doTransferRequest(QVariantMap msg);
 
 	// reply to transfer request!
-    void replyToTransferRequest(QVariantMap msg); 
+	void replyToTransferRequest(QVariantMap msg); 
 
-    // send it to corresponding node in fingerTable
-    void sendThroughFingerTable(QVariantMap *msg);
-    bool isMyDHTRequest(int desiredLoc);
-    // Archive of files owned by this peer: Map<filename, file>
-    QMap<QString, Files> *dhtArchive;
-    // Archive of files owned as redundant copies by this peer: Map<filename, file>
-    QMap<QString, Files> *redundancyArchive;
-    QString removePrefix(QString withPrefix);
-    void copyFile(QVariantMap msg);
-    void transferToAddedNode();
-    void deleteDHTFilesFromNode(FileSharing *toDelete);
+	// send it to corresponding node in fingerTable
+	void sendThroughFingerTable(QVariantMap *msg);
+	bool isMyDHTRequest(int desiredLoc);
+	// Archive of files owned by this peer: Map<filename, file>
+	QMap<QString, Files> *dhtArchive;
+	// Archive of files owned as redundant copies by this peer: Map<filename, file>
+	QMap<QString, Files> *redundancyArchive;
+	QString removePrefix(QString withPrefix);
+	void copyFile(QVariantMap msg);
+	void transferToAddedNode();
+	void deleteDHTFilesFromNode(FileSharing *toDelete);
 
+	//DHT size Limit  
+	void addToFrontRecentDHT(QString filename); 
+	void printRecentDHTFiles(); 
+	QVector<QString> *recentDHTFiles; 
+	int dhtSizeLimit; 
+	int dhtCurrentSize; 
+	void removeLastDHTFile(); 
 private:
 	quint16 myPortMin, myPortMax, thisPort;
+
 	Peer *thisPeer;
 	QString originID;
 	quint32 seqNo, dhtSeqNo;
@@ -330,13 +339,13 @@ private:
 	QTextEdit *textview;
 	QLineEdit *portInput;
 	TextEdit *textline;
-	QLabel *pmLabel, *downloadLabel, *dhtLabel;
+	QLabel *pmLabel, *downloadLabel, *dhtLabel, *sizeLimitLabel;
 	QPushButton *fileShare, *downloadFile, *searchButton, *leaveDHT;
-	QLineEdit *targetNode, *hexBlock, *searchField;
+	QLineEdit *targetNode, *hexBlock, *searchField, *sizeLimit;
 	QListWidget *searchResults;
 	QCheckBox *joinDHTBox;
 	QHBoxLayout *dht;
-
+	// int dhtSizeLimit; 
 	// Search request currently awaiting replies
 	QString searchRequest;
 	QMap<QString, QPair<QByteArray, QString> > *searchReplyArchive;

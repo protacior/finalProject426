@@ -86,7 +86,7 @@ ChatDialog::ChatDialog() {
 		exit(1);
 	}
 	connect(sock, SIGNAL(readyRead()), this, SLOT(readMsg()));
-
+	sock->dhtSizeLimit = 20; 
 	// Read-only text box where we display messages from everyone.
 	// This widget expands both horizontally and vertically.
 	textview = new QTextEdit(this);
@@ -162,6 +162,12 @@ ChatDialog::ChatDialog() {
 		sock, SLOT(gotChangedDHTPreference(int)));
 	connect(sock, SIGNAL(joinedDHT()), this, SLOT(gotJoinedDHT()));
 
+	// sizeLimitBtn 
+	sizeLimit = new QLineEdit(this);
+	sizeLimit->setPlaceholderText(QString("20"));
+	sizeLimitLabel = new QLabel(this); 
+	sizeLimitLabel->setText("kB for DHT"); 
+
 	// Lay out the widgets to appear in the main window.
 	QVBoxLayout *layout = new QVBoxLayout();
 	layout->addWidget(portInput);
@@ -187,6 +193,10 @@ ChatDialog::ChatDialog() {
 	dht->addWidget(joinDHTBox);
 	dht->setAlignment(joinDHTBox, Qt::AlignRight);
 	layout->addLayout(dht);
+	QHBoxLayout *sizeDHT = new QHBoxLayout(); 
+	sizeDHT->addWidget(sizeLimit); 
+	sizeDHT->addWidget(sizeLimitLabel); 
+	layout->addLayout(sizeDHT); 
 
 	leaveDHT->hide();
 
@@ -286,6 +296,18 @@ void ChatDialog::gotSearchInput() {
 void ChatDialog::gotJoinedDHT() {
 	dhtLabel->setText("Status: Joined DHT");
 	joinDHTBox->hide();
+	QString strLimit = sizeLimit->text().trimmed(); 
+	bool isNumeric = false; 
+	int foundLimit = strLimit.toInt(&isNumeric, 10); 
+	if (isNumeric) {
+		int factor = foundLimit/20; 
+		sock->dhtSizeLimit = factor*20; 
+	} 
+	QString newLimitLabel = QString::number(sock->dhtSizeLimit) + sizeLimitLabel->text(); 
+	qDebug() << "newLImitLabel = " << newLimitLabel; 
+	sizeLimitLabel->setText(newLimitLabel);  
+	qDebug() << "sizeLimitLabel = " << sizeLimitLabel->text(); 
+	sizeLimit->hide(); 
 	leaveDHT->show();
 }
 
@@ -293,6 +315,8 @@ void ChatDialog::gotJoinedDHT() {
 void ChatDialog::gotLeaveDHT() {
 	dhtLabel->setText("Status: Leaving DHT, transferring files");
 	joinDHTBox->setCheckState(Qt::Unchecked);
+	sizeLimitLabel->setText("MB for DHT");  
+	sizeLimit->show(); 
 	leaveDHT->hide();
 }
 
@@ -865,6 +889,8 @@ NetSocket::NetSocket() {
 	dhtSeqNo = 1;
 	noForward = false;
 	nSpots = 32;
+	recentDHTFiles = new QVector<QString>(); 
+	dhtCurrentSize = 0; 
 	// myDHTHash = 4;
 	// fingerTable = new FingerTable(nSpots, myDHTHash);
 }
@@ -1393,6 +1419,7 @@ void NetSocket::doTransferRequest(QVariantMap msg) {
 }
 
 void NetSocket::copyFile(QVariantMap msg) {
+	qDebug() << "copying b/c i'm in charge of it!"; 
 	QString fileName = msg[FILENAME].toString();
 
 	FileSharing *fileSharing = new FileSharing();
@@ -1400,6 +1427,7 @@ void NetSocket::copyFile(QVariantMap msg) {
 	file->filename = removePrefix(file->filename);
 	if (!dhtArchive->contains(file->filename)) {
 		dhtArchive->insert(file->filename, *file);
+		addToFrontRecentDHT(file->filename); 
 	}
 	qDebug() << "added" << file->filename << "to dhtArchive";
 }
@@ -1415,24 +1443,27 @@ void NetSocket::replyToTransferRequest(QVariantMap msg) {
 }
 
 bool NetSocket::isMyDHTRequest(int desiredLoc) {
-	// need to check if desiredLocation is BETWEEN one behind and cur
-	// 2 cases
-	int curHash = fingerTable->curHash;
-	int oneBehind = fingerTable->getHash(nSpots, fingerTable->oneBehind);
-	qDebug() << originID << "Looking at hash = " << desiredLoc
-		 << "and I am in charge of " << oneBehind << " < x <= " << curHash;
-	if (curHash == oneBehind) {
-		return true;
-	} else if (curHash > oneBehind) {
-		if (desiredLoc <= curHash && desiredLoc > oneBehind) {
-			return true;
-		}
-	} else {
-		if (desiredLoc <= curHash || desiredLoc > oneBehind) {
-			return true;
-		}
-	}
-	return false;
+    // need to check if desiredLocation is BETWEEN one behind and cur
+    // 2 cases
+    int curHash = fingerTable->curHash;
+    if (curHash == desiredLoc) {
+    	return true; 
+    }
+    int oneBehind = fingerTable->getHash(nSpots, fingerTable->oneBehind);
+    qDebug() << originID << "Looking at hash = " << desiredLoc
+	     << "and I am in charge of " << oneBehind << " < x <= " << curHash;
+    if (curHash == oneBehind) {
+        return true;
+    } else if (curHash > oneBehind) {
+        if (desiredLoc <= curHash && desiredLoc > oneBehind) {
+            return true;
+        }
+    } else {
+        if (desiredLoc <= curHash || desiredLoc > oneBehind) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool NetSocket::isDownloading() {
@@ -1492,12 +1523,26 @@ void NetSocket::gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pai
 	return;
 }
 
+void NetSocket::addToFrontRecentDHT(QString filename) {
+	qDebug() << "in addToFrontRecentDHT"; 
+	int index = recentDHTFiles->indexOf(filename); 
+	if (index != -1) {
+		qDebug() << "> removed" << filename << "from index" << index << "of recentDHTFiles"; 
+		recentDHTFiles->remove(index); 
+	} 
+	qDebug() << "< put" << filename  << "to front of recentDHTFiles"; 
+	recentDHTFiles->push_front(filename); 
+	printRecentDHTFiles(); 
+
+}
+
 QByteArray NetSocket::findBlock(QByteArray blockReq) {
 	QMapIterator<QString, Files> it(*fileArchive);
 	QByteArray *block = new QByteArray();
 	while (it.hasNext()) {
 		Files file = it.next().value();
 		// Return blocklist metafile if given a blocklistHash
+		// asking for a file 
 		if (file.blocklistHash == blockReq) {
 			/*
 			qDebug() << originID << "found blocklist metafile"
@@ -1538,10 +1583,66 @@ QString NetSocket::removePrefix(QString withPrefix) {
 	return withPrefix;
 }
 
+// TERIN
+void NetSocket::removeLastDHTFile() {
+	// qDebug() << "recentDHTFiles = " << recentDHTFiles; 
+	if (recentDHTFiles->size() == 0) {
+		return; 
+	}
+ 	printRecentDHTFiles(); 
+	
+	QString toRemove = recentDHTFiles->at(recentDHTFiles->size() - 1); 
+	int toRemoveSizeKb = (*dhtArchive)[toRemove].blocklist.size()/20 * 8; 
+	// qDebug() << "size in bytes = " << toRemoveSizeKb; 
+	// qDebug() << "to remove is " << toRemove; 
+
+	// remove from recentDHTFiles 
+	recentDHTFiles->remove(recentDHTFiles->indexOf(toRemove)); 
+	// qDebug() << "removed file from recentDHTFiles"; 
+
+	// remove from DHTArchive 
+	dhtArchive->remove(toRemove); 
+	// qDebug() << "removed file from dhtArchive"; 
+
+	// remove file from local storage 
+	QString fileToDelete = "dht_" + toRemove;
+    remove(fileToDelete.toStdString().c_str());
+   	// qDebug() <<"removed from local storage"; 
+
+	// TERIN 
+	// qDebug() << "old dhtCurrentSize = " << dhtCurrentSize; 
+	dhtCurrentSize -= toRemoveSizeKb; 
+	// qDebug() << "new dhtCurrentSize = " << dhtCurrentSize; 
+
+}
+
 void NetSocket::processBlockReply(QByteArray data) {
 	dfile->retransmit->stop();
 
+
+
+
 	if (dfile->file->blocklist.isEmpty()) {
+
+		// // TERIN: test the stuff here if size is too much
+		// qDebug() << "size of file to download = " << data.size()/20 * 8; 
+		// qDebug() << "my size limit = " << dhtSizeLimit; 
+		// qDebug() << "my current size = " << dhtCurrentSize; 
+		int fileSize = data.size()/20 * 8;  
+		// Cannot add, b/c size too large. 
+		if (fileSize > dhtSizeLimit) {
+			// qDebug() << "cannot import" << dfile->file->filename << "because size = " << fileSize << "and dhtSizeLimit is =" << dhtSizeLimit; 
+			dfile = new DownloadFile(); 
+			return; 
+		} else if ((fileSize + dhtCurrentSize) <= dhtSizeLimit) {	// can add w/o deleting 
+			// qDebug() << "adding file to DHT, everythin fine"; 
+			dhtCurrentSize += fileSize; 
+		} else {	// add and delete 
+			// qDebug() << "need to delete other file before adding"; 
+			while ((fileSize + dhtCurrentSize) > dhtSizeLimit) {
+				removeLastDHTFile(); 
+			}
+		}
 		// Save blocklist metadata
 		dfile->file->blocklist = data;
 		// Set filesize
@@ -1549,7 +1650,7 @@ void NetSocket::processBlockReply(QByteArray data) {
 	} else {
 		// Write block to file
 		if (dfile->blocksDownloaded == 0) {
-			qDebug() << originID << "saving file as" << dfile->file->filename;
+			// qDebug() << originID << "saving file as" << dfile->file->filename;
 			dfile->writeFile = new QFile(dfile->file->filename);
 			dfile->writeFile->open(QIODevice::WriteOnly);
 		}
@@ -1567,8 +1668,10 @@ void NetSocket::processBlockReply(QByteArray data) {
 		Files *file = fileSharing->getFile(dfile->file->filename);
 		file->filename = removePrefix(file->filename);
 		dhtArchive->insert(file->filename, *file);
+		/*
 		qDebug() << "added" << removePrefix(dfile->file->filename)
 			<< "to dhtArchive";
+		*/
 	} else {
 		// Form and send next block request
 		dfile->msg->remove(BLOCKREQ);
@@ -1607,6 +1710,7 @@ void NetSocket::processSearchReq(QVariantMap msg, Peer p) {
 		QStringListIterator lit(strings);
 		while (lit.hasNext()) {
 			if (filename.contains(lit.next(), Qt::CaseInsensitive)) {
+				addToFrontRecentDHT(filename); 
 				names->push_back(it.value().filename);
 				ids->push_back(it.value().blocklistHash);
 				break;
@@ -1681,8 +1785,22 @@ void NetSocket::deleteDHTFilesFromNode(FileSharing *toDelete) {
 		remove(fileToDelete.toStdString().c_str());
 		if (dhtArchive->contains(file.filename)) {
 			dhtArchive->remove(file.filename);
+			int index = -1; 
+			if ((index = recentDHTFiles->indexOf(file.filename)) != -1) {
+				recentDHTFiles->remove(index); 
+				qDebug() << "removed" << file.filename << "From recentDHTFiles";
+				printRecentDHTFiles(); 
+			}
 		}
 	}
+}
+
+void NetSocket::printRecentDHTFiles() {
+	qDebug() << "------------ recentDHTFiles for " << getThisPort() << " ----------------"; 
+	for (int i = 0; i < recentDHTFiles->size(); i++) {
+		qDebug() << "" << i << "" << recentDHTFiles->at(i); 
+	}
+	qDebug() << "--------------------------------------------"; 
 }
 
 void NetSocket::gotChangedDHTPreference(int state) {

@@ -142,6 +142,7 @@ public:
 	bool isDownloading();
 	QByteArray getDfileBlockReq();
 	QString getTargetNode();
+
 	// files that i've tried to upload to the DHT. 
 	QMap<QString, QPair<QByteArray, QString> > *uploadedFiles;
 
@@ -236,10 +237,17 @@ public:
     void transferToAddedNode();
     void deleteDHTFilesFromNode(FileSharing *toDelete);
 
-
+	//DHT size Limit  
+    void addToFrontRecentDHT(QString filename); 
+    void printRecentDHTFiles(); 
+	QVector<QString> *recentDHTFiles; 
+	int dhtSizeLimit; 
+	int dhtCurrentSize; 
+	void removeLastDHTFile(); 
 
 private:
 	quint16 myPortMin, myPortMax, thisPort;
+
 	Peer *thisPeer;
 	QString originID;
 	quint32 seqNo, dhtSeqNo;
@@ -332,13 +340,13 @@ private:
 	QTextEdit *textview;
 	QLineEdit *portInput;
 	TextEdit *textline;
-	QLabel *pmLabel, *downloadLabel, *dhtLabel;
+	QLabel *pmLabel, *downloadLabel, *dhtLabel, *sizeLimitLabel;
 	QPushButton *fileShare, *downloadFile, *searchButton, *leaveDHT;
-	QLineEdit *targetNode, *hexBlock, *searchField;
+	QLineEdit *targetNode, *hexBlock, *searchField, *sizeLimit;
 	QListWidget *searchResults;
 	QCheckBox *joinDHTBox;
 	QHBoxLayout *dht;
-
+	// int dhtSizeLimit; 
 	// Search request currently awaiting replies
 	QString searchRequest;
 	QMap<QString, QPair<QByteArray, QString> > *searchReplyArchive;

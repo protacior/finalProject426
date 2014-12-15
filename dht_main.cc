@@ -475,6 +475,15 @@ void ChatDialog::readMsg() {
         sock->sendThroughFingerTable(&msg, fileHash); 
         qDebug() << "am searching along"; 
       }
+      // sock->processSearchReq(msg, *senderPeer);
+
+      // Redistribute search request if more budget left
+      // quint32 newBudget = msg.value(BUDGET).toUInt() - 1;
+      // if (newBudget > 0) {
+      //   msg.remove(BUDGET);
+      //   msg.insert(BUDGET, newBudget);
+      //   sock->sendByBudget(msg);
+      // }
     } else if (sock->isMsgOrRouteOrDHT(msg, senderPeer)) {
       // Datagram is a message or route rumor
 

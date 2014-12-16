@@ -135,7 +135,7 @@ ChatDialog::ChatDialog() {
 
   // Search field
   searchField = new QLineEdit(this);
-  searchField->setPlaceholderText("Search for strings");
+  searchField->setPlaceholderText("Search for exact file names");
   searchButton = new QPushButton("Search");
   connect(searchButton, SIGNAL(clicked()), this, SLOT(gotSearchInput()));
   connect(this, SIGNAL(startSearchFor(QPair<QString, quint32>)),
@@ -200,7 +200,7 @@ ChatDialog::ChatDialog() {
   layout->addLayout(sizeDHT); 
 
   leaveDHT->hide();
-  portInput->hide();
+  //  portInput->hide();
   textview->hide();
   textline->hide();
   pmLabel->hide();
@@ -394,8 +394,7 @@ void ChatDialog::readMsg() {
           // or a blocklist metafile
           QByteArray blockReq = msg.value(BLOCKREQ).toByteArray();
           /*
-            qDebug() << sock->getOriginID() <<
-            "received block request from" <<
+            qDebug() << "received block request from" <<
             msg.value(ORIGIN).toString() << "asking for"
             << blockReq.toHex();
           */
@@ -412,6 +411,8 @@ void ChatDialog::readMsg() {
             rep->insert(HOPLIMIT, DEFLIM);
 
             sock->sendMsg(rep, *senderPeer);
+          } else {
+            // qDebug() << "did not send reply";
           }
         } else if (msg.find(BLOCKREPLY) != msg.end()) {
           QByteArray blockReply = msg.value(BLOCKREPLY).
@@ -427,7 +428,7 @@ void ChatDialog::readMsg() {
           if (blockReply != sock->getDfileBlockReq() ||
               msg.value(ORIGIN).toString() !=
               sock->getTargetNode()) {
-            // qDebug() << "received unrequested reply"; // TODO:
+            qDebug() << "received unrequested reply"; // TODO:
           } else {
             // Check that hash of data == blockReply
             QCA::init();
@@ -1473,9 +1474,11 @@ void NetSocket::replyToTransferRequest(QVariantMap msg) {
     qMakePair(fileName, pair); 
   if (msg.find(REDUNDANT) != msg.end()) {
     redundancyArchive->insert(fileName.split("/").last(), *file);
+    qDebug() << "ADDED" << fileName.split("/").last() << "to redArch";
     gotReqToDownload(fullPair, false);
   } else {
     dhtArchive->insert(fileName.split("/").last(), *file);
+    qDebug() << "ADDED" << fileName.split("/").last() << "to dhtArch";
     gotReqToDownload(fullPair, false);//TODO
   }
 }
@@ -1530,7 +1533,7 @@ void NetSocket::gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pai
     return;
   }
 
-  // Form message
+  // Form block request message
   QVariantMap *msg = new QVariantMap();
   msg->insert(DEST, pair.second.second);
   msg->insert(BLOCKREQ, pair.second.first);
@@ -1563,6 +1566,9 @@ void NetSocket::gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pai
   }
   dfile->file->filename = prefix.append(parts.last());
 
+  qDebug() << "AWAITING DOWNLOAD OF" << dfile->file->filename
+           << "from" << (*dest).toString();
+
   // Every 2 seconds, retransmit request
   dfile->retransmit = new QTimer(this);
   connect(dfile->retransmit, SIGNAL(timeout()),
@@ -1582,17 +1588,13 @@ void NetSocket::addToFrontRecentDHT(QString filename) {
 }
 
 QByteArray NetSocket::findBlock(QByteArray blockReq) {
-  QMapIterator<QString, Files> it(*fileArchive);
+  QMapIterator<QString, Files> it(*dhtArchive);
   QByteArray *block = new QByteArray();
   while (it.hasNext()) {
     Files file = it.next().value();
     // Return blocklist metafile if given a blocklistHash
     // asking for a file 
     if (file.blocklistHash == blockReq) {
-      /*
-        qDebug() << originID << "found blocklist metafile"
-        << blockReq.toHex();
-      */
       *block = QByteArray(file.blocklist);
       return *block;
     }
@@ -1615,7 +1617,65 @@ QByteArray NetSocket::findBlock(QByteArray blockReq) {
       }
     }
   }
-  // qDebug() << originID << "did not find blockReq"; // TODO:
+  it = QMapIterator<QString, Files>(*redundancyArchive);
+  while (it.hasNext()) {
+    Files file = it.next().value();
+    // Return blocklist metafile if given a blocklistHash
+    // asking for a file 
+    if (file.blocklistHash == blockReq) {
+      *block = QByteArray(file.blocklist);
+      return *block;
+    }
+    // Return block of data if given a blocklist metafile chunk
+    for (qint64 i = 1; i <= file.filesize; i++) {
+      qint64 blockIndex = (i-1) * 20;
+      /*
+        qDebug() << "looking for " << blockReq.toHex() << " and is at index "
+        << file.blocklist.indexOf(blockReq, blockIndex) << " of blockList";
+      */
+      if (file.blocklist.indexOf(blockReq, blockIndex) == blockIndex) {
+        QFile readF(file.filename);
+        readF.open(QIODevice::ReadOnly);
+        if (!readF.seek((i-1)*MAXBYTES)) {
+          qDebug() << "error reading from" << file.filename;
+        }
+        *block = readF.read(MAXBYTES);
+        // qDebug() << originID << "found data block" << i-1;
+        return *block;
+      }
+    }
+  }
+  // TODO: remove below and add to archives
+  it = QMapIterator<QString, Files>(*fileArchive);
+  while (it.hasNext()) {
+    Files file = it.next().value();
+    // Return blocklist metafile if given a blocklistHash
+    // asking for a file 
+    if (file.blocklistHash == blockReq) {
+      *block = QByteArray(file.blocklist);
+      return *block;
+    }
+    // Return block of data if given a blocklist metafile chunk
+    for (qint64 i = 1; i <= file.filesize; i++) {
+      qint64 blockIndex = (i-1) * 20;
+      /*
+        qDebug() << "looking for " << blockReq.toHex() << " and is at index "
+        << file.blocklist.indexOf(blockReq, blockIndex) << " of blockList";
+      */
+      if (file.blocklist.indexOf(blockReq, blockIndex) == blockIndex) {
+        QFile readF(file.filename);
+        readF.open(QIODevice::ReadOnly);
+        if (!readF.seek((i-1)*MAXBYTES)) {
+          qDebug() << "error reading from" << file.filename;
+        }
+        *block = readF.read(MAXBYTES);
+        // qDebug() << originID << "found data block" << i-1;
+        return *block;
+      }
+    }
+  }
+
+  qDebug() << originID << "did not find blockReq"; // TODO:
   return *block;
 }
 
@@ -1651,7 +1711,7 @@ void NetSocket::removeLastDHTFile() {
     QString fileToDelete = "dht_" + toRemove;
     remove(fileToDelete.toStdString().c_str());
     // qDebug() <<"removed from local storage"; 
-  } else {
+  } else { // TODO: else if?
     toRemoveSizeKb =
       ((*redundancyArchive)[toRemove].blocklist.size()/20 + 1) * 8;
     // remove from redundancy archive
@@ -1677,15 +1737,13 @@ void NetSocket::processBlockReply(QByteArray data) {
   dfile->retransmit->stop();
 
   if (dfile->file->blocklist.isEmpty()) {
-    // // TERIN: test the stuff here if size is too much
-    // qDebug() << "size of file to download = " << data.size()/20 * 8; 
-    // qDebug() << "my size limit = " << dhtSizeLimit; 
-    // qDebug() << "my current size = " << dhtCurrentSize; 
     int fileSize = data.size()/20 * 8;  
 
     if (fileSize > dhtSizeLimit) {
       // Cannot add, b/c size too large. 
-      qDebug() << " cannot import" << dfile->file->filename << "because file size is" << fileSize << "and size limit is" << dhtSizeLimit; 
+      qDebug() << " cannot import" << dfile->file->filename
+               << "because file size is" << fileSize
+               << "and size limit is" << dhtSizeLimit; 
       dfile = new DownloadFile(); 
       return; 
     } else if ((fileSize + dhtCurrentSize) <= dhtSizeLimit) {
@@ -1706,7 +1764,7 @@ void NetSocket::processBlockReply(QByteArray data) {
   } else {
     // Write block to file
     if (dfile->blocksDownloaded == 0) {
-      // qDebug() << originID << "saving file as" << dfile->file->filename;
+      qDebug() << "SAVING FILE AS" << dfile->file->filename; //TODO
       dfile->writeFile = new QFile(dfile->file->filename);
       dfile->writeFile->open(QIODevice::WriteOnly);
     }
@@ -1720,6 +1778,7 @@ void NetSocket::processBlockReply(QByteArray data) {
     downloading = false;
 
     dfile->writeFile->close();
+    qDebug() << "FINISHED WRITING" << dfile->file->filename << "to dir";
     FileSharing *fileSharing = new FileSharing();
     Files *file = fileSharing->getFile(dfile->file->filename);
     file->filename = removePrefix(file->filename);
@@ -1729,11 +1788,11 @@ void NetSocket::processBlockReply(QByteArray data) {
       // Initiate redundant copies
       fileSharing->files.push_back(*file);
       sendRedundancies(fileSharing);
-    } else if (redundancyArchive->contains(file->filename)) {
+    } else if (redundancyArchive->contains(file->filename)) { // TODO: else?
       redundancyArchive->insert(file->filename, *file);
       printRedundancyArchive();
     }
-    addToFrontRecentDHT(file->filename);
+    addToFrontRecentDHT(file->filename); // TODO: move to both?
   } else {
     // Form and send next block request
     dfile->msg->remove(BLOCKREQ);

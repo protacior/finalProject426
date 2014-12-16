@@ -312,7 +312,7 @@ public slots:
   void resetOL();
   void gotSendPM(QVariantMap msg);
   void gotShareFiles(FileSharing *share);
-  void gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pair, bool isDownload, bool isRed);
+  void gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pair, bool isDownload);
   void gotRetransmit();
   void gotStartSearchFor(QPair<QString, quint32> pair);
   void gotChangedDHTPreference(int state);
@@ -348,7 +348,7 @@ public slots:
   void increaseBudget();
 
 signals:
-  void reqToDownload(QPair<QString, QPair<QByteArray, QString> >, bool, bool);
+  void reqToDownload(QPair<QString, QPair<QByteArray, QString> >, bool);
   void startSearchFor(QPair<QString, quint32>);
 
 private:

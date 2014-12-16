@@ -428,7 +428,7 @@ void ChatDialog::readMsg() {
           if (blockReply != sock->getDfileBlockReq() ||
               msg.value(ORIGIN).toString() !=
               sock->getTargetNode()) {
-            qDebug() << "received unrequested reply"; // TODO:
+            // qDebug() << "received unrequested reply"; // DEBUG
           } else {
             // Check that hash of data == blockReply
             QCA::init();
@@ -1423,7 +1423,7 @@ void NetSocket::doTransferRequest(QVariantMap msg) {
 
 void NetSocket::copyFile(QVariantMap msg) {
   qDebug() << " adding" << msg[FILENAME].toString() << "to files owned"; 
-  // TODO: add size to dhtCurrentSize?
+
   QString fileName = msg[FILENAME].toString();
 
   FileSharing *fileSharing = new FileSharing();
@@ -1479,7 +1479,7 @@ void NetSocket::replyToTransferRequest(QVariantMap msg) {
   } else {
     dhtArchive->insert(fileName.split("/").last(), *file);
     qDebug() << "ADDED" << fileName.split("/").last() << "to dhtArch";
-    gotReqToDownload(fullPair, false);//TODO
+    gotReqToDownload(fullPair, false);
   }
 }
 
@@ -1583,7 +1583,6 @@ void NetSocket::addToFrontRecentDHT(QString filename) {
     recentDHTFiles->remove(index); 
   } 
   recentDHTFiles->push_front(filename); 
-  // TODO: printRecentDHTFiles(); 
 
 }
 
@@ -1645,7 +1644,6 @@ QByteArray NetSocket::findBlock(QByteArray blockReq) {
       }
     }
   }
-  // TODO: remove below and add to archives
   it = QMapIterator<QString, Files>(*fileArchive);
   while (it.hasNext()) {
     Files file = it.next().value();
@@ -1675,7 +1673,7 @@ QByteArray NetSocket::findBlock(QByteArray blockReq) {
     }
   }
 
-  qDebug() << originID << "did not find blockReq"; // TODO:
+  //  qDebug() << originID << "did not find blockReq"; // DEBUG
   return *block;
 }
 
@@ -1711,7 +1709,7 @@ void NetSocket::removeLastDHTFile() {
     QString fileToDelete = "dht_" + toRemove;
     remove(fileToDelete.toStdString().c_str());
     // qDebug() <<"removed from local storage"; 
-  } else { // TODO: else if?
+  } else {
     toRemoveSizeKb =
       ((*redundancyArchive)[toRemove].blocklist.size()/20 + 1) * 8;
     // remove from redundancy archive
@@ -1752,7 +1750,7 @@ void NetSocket::processBlockReply(QByteArray data) {
       qDebug() << " currently using" << dhtCurrentSize
                << "of" << dhtSizeLimit << "kb";
     } else {	// add and delete 
-      qDebug() << " need to delete other file before adding"; //TODO
+      qDebug() << " need to delete other file before adding";
       while ((fileSize + dhtCurrentSize) > dhtSizeLimit) {
         removeLastDHTFile(); 
       }
@@ -1764,7 +1762,7 @@ void NetSocket::processBlockReply(QByteArray data) {
   } else {
     // Write block to file
     if (dfile->blocksDownloaded == 0) {
-      qDebug() << "SAVING FILE AS" << dfile->file->filename; //TODO
+      qDebug() << "SAVING FILE AS" << dfile->file->filename;
       dfile->writeFile = new QFile(dfile->file->filename);
       dfile->writeFile->open(QIODevice::WriteOnly);
     }
@@ -1788,11 +1786,12 @@ void NetSocket::processBlockReply(QByteArray data) {
       // Initiate redundant copies
       fileSharing->files.push_back(*file);
       sendRedundancies(fileSharing);
-    } else if (redundancyArchive->contains(file->filename)) { // TODO: else?
+      addToFrontRecentDHT(file->filename);
+    } else if (redundancyArchive->contains(file->filename)) {
       redundancyArchive->insert(file->filename, *file);
       printRedundancyArchive();
+      addToFrontRecentDHT(file->filename);
     }
-    addToFrontRecentDHT(file->filename); // TODO: move to both?
   } else {
     // Form and send next block request
     dfile->msg->remove(BLOCKREQ);
@@ -1916,7 +1915,6 @@ void NetSocket::transferToAddedNode() {
 
   deleteDHTFilesFromNode(toTransfer);
   gotShareFiles(toTransfer);
-  // TODO: check this order
 }
 
 void NetSocket::deleteDHTFilesFromNode(FileSharing *toDelete) {

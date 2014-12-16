@@ -83,6 +83,7 @@ public:
   Peer dest;
   QVariantMap *msg;
   bool isDownload;
+  bool isRed;
 
   QTimer *retransmit;
 };
@@ -218,19 +219,28 @@ public:
   void updateDhtStatus(QVariantMap *msg);
   // Add to finger table
   void addToFingerTable(QString origin);
-
-  // new stuff
+  // Send redunant copies to appropriate node for all files in toCopy
+  void sendRedundancies(FileSharing *toCopy);
   // is TransferRequest
   bool isTransferRequest(QVariantMap msg);
   // foundTransferRequest
   void doTransferRequest(QVariantMap msg);
-
   // reply to transfer request!
   void replyToTransferRequest(QVariantMap msg); 
-
   // send it to corresponding node in fingerTable
   void sendThroughFingerTable(QVariantMap *msg);
+  // Whether this node is in charge of the desiredLoc location in the DHT
   bool isMyDHTRequest(int desiredLoc);
+  // Whether or not this node has the file with the given filename in
+  // its redundancy archive
+  bool haveRedundantCopy(QString filename);
+  // Delete filename from recentDHTFiles
+  void removeFromRecentDHTFiles(QString filename);
+  // Print out DHT archive
+  void printDHTArchive();
+  // Print out redundancy archive
+  void printRedundancyArchive();
+
   // Archive of files owned by this peer: Map<filename, file>
   QMap<QString, Files> *dhtArchive;
   // Archive of files owned as redundant copies by this peer: Map<filename, file>
@@ -302,7 +312,7 @@ public slots:
   void resetOL();
   void gotSendPM(QVariantMap msg);
   void gotShareFiles(FileSharing *share);
-  void gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pair, bool isDownload);
+  void gotReqToDownload(QPair<QString, QPair<QByteArray, QString> > pair, bool isDownload, bool isRed);
   void gotRetransmit();
   void gotStartSearchFor(QPair<QString, quint32> pair);
   void gotChangedDHTPreference(int state);
@@ -338,7 +348,7 @@ public slots:
   void increaseBudget();
 
 signals:
-  void reqToDownload(QPair<QString, QPair<QByteArray, QString> >, bool);
+  void reqToDownload(QPair<QString, QPair<QByteArray, QString> >, bool, bool);
   void startSearchFor(QPair<QString, quint32>);
 
 private:

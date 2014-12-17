@@ -1,0 +1,2 @@
+This project by Rachel Protacio and Terin Patel-Wilson was used for the final project for Decentralized Systems during Fall, 2014 at Yale University. The project itself is a simple chord implementation that allows users to dynamically join and leave (both gracefully and ungracefully) and  upload, download, and search for files in the DHT. In order to allow for ungraceful exits by users, we have implemented a redundancy storage of all uploaded files. Additionally, all users can specify how much memory they want to dedicate to the DHT before joining. Thanks!
+
